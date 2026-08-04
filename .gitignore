@@ -1,69 +1,43 @@
+# Build output
+build/
+.gradle/
+.cxx/
+out/
+
+# Gradle wrapper jar should be tracked, but local caches should not
+# (Keep gradle-wrapper.jar and gradle-wrapper.properties)
+
+# IDE
+.idea/
 *.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/dictionaries
-/.idea/modules.xml
-/.idea/misc.xml
-/.idea/markdown.xml
-/.idea/discord.xml
-/.idea/compiler.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/ktlint-plugin.xml
-/.idea/assetWizardSettings.xml
-/.idea/kotlinScripting.xml
-/.idea/kotlinc.xml
-/.idea/deploymentTargetDropDown.xml
-/.idea/androidTestResultsUserPreferences.xml
-/.idea/deploymentTargetSelector.xml
-/.idea/render.experimental.xml
-/.idea/inspectionProfiles/
-.DS_Store
-/build
-/captures
-keystore
-.externalNativeBuild
-.cxx
-/.idea/deviceManager.xml
-/.kotlin/
-/.idea/AndroidProjectSystem.xml
-*.keystore
+*.ipr
+*.iws
+.vscode/
+
+# Local config
+local.properties
+
+# Native build
+app/build/
+parser-api/build/
+app/.cxx/
+*.so.bak
+
+# Keystore / signing
 *.jks
-release.keystore
-app/keystore/
-*.sh
+*.keystore
+keystore.properties
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
 *.log
-__pycache__/
-node_modules/
-docs/.vitepress/cache/
-docs/.vitepress/dist/
-*/build
-.claude/worktrees
-.claude/settings.local.json
-.claude/scheduled_tasks.lock
-.mindfs/
-.tmp/
-.pi-esr-memory/
-.pi-loom/
-.pirc.json
-*.txt
-policy
-chroma
-reasonix.toml
-/.vscode
-.pi-weave
-/models/
 
-# Codex developer-local configuration
-/.agents/
-/.codex/agents/
-/.codex/config.toml
+# GitHub Actions local cache (should not be committed)
+.github/workflows/.cache/
 
-# Trellis developer-local state
-/.trellis/
-/.trellis/workspace/
-/.trellis/.runtime/
-/.trellis/.developer
-/.trellis/.current-task
+# Generated APKs (built in CI, not committed)
+*.apk
+*.aab
