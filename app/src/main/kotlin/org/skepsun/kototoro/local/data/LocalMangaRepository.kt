@@ -161,13 +161,16 @@ class LocalMangaRepository @Inject constructor(
 			android.util.Log.d("LocalMangaRepository", "Delegating getPages to original source: ${chapter.source.name}")
 			return repositoryFactory.get().create(chapter.source).getPages(chapter, nextChapterUrl)
 		}
-		
+
 		android.util.Log.d("LocalMangaRepository", "getPages: chapter.url=${chapter.url}, title=${chapter.title}")
-		
+
+		// 先用 Uri.parse 解析出 scheme，避免字符串前缀匹配对编码/格式的脆弱依赖
+		val chapterUri = runCatching { chapter.url.toUri() }.getOrNull()
+		val scheme = chapterUri?.scheme
+
 		// NEW ARCHITECTURE: EPUB chapters use epub:// protocol
-		if (chapter.url.startsWith("epub://") || chapter.url.startsWith("localepub://")) {
+		if (scheme == "epub" || scheme == "localepub") {
 			android.util.Log.d("LocalMangaRepository", "EPUB chapter detected (new architecture / localepub)")
-			// Return a special page that will be handled by NovelContentLoader
 			return listOf(
 				ContentPage(
 					id = 0,
@@ -179,10 +182,16 @@ class LocalMangaRepository @Inject constructor(
 		}
 
 		// PDF 章节：使用 pdf:// 协议，按页拆分成 ContentPage 列表
-		if (chapter.url.startsWith("$URI_SCHEME_PDF://")) {
+		if (scheme == URI_SCHEME_PDF) {
 			android.util.Log.d("LocalMangaRepository", "PDF chapter detected: ${chapter.url}")
-			val uri = android.net.Uri.parse(chapter.url)
-			val pdfPath = uri.path ?: return emptyList()
+			// 兼容两种情况：
+			// 1) chapter URL 无 fragment（仅指向 PDF 文件）→  uri.path 有效
+			// 2) 用户数据库里存的是旧格式 / 被 Uri 规范化的格式 → 用 uri.schemeSpecificPart + 手动去 // 前缀兜底
+			val rawPath = chapterUri.path
+				?: chapterUri.schemeSpecificPart
+					?.trimStart('/')
+					?.let { "/$it" }
+			val pdfPath = rawPath ?: return emptyList()
 			val pdfFile = java.io.File(pdfPath)
 			val parser = org.skepsun.kototoro.local.pdf.LocalPdfParser(pdfFile)
 			val pageCount = parser.pageCount()
@@ -202,19 +211,17 @@ class LocalMangaRepository @Inject constructor(
 				)
 			}
 		}
-		
+
 		// Legacy EPUB chapters with file://path#chapter/N format are no longer supported
-		// Users need to re-download to use the new architecture
-		if (chapter.url.contains("#chapter/") && chapter.url.startsWith("file://")) {
+		if (scheme == "file" && chapterUri.fragment?.contains("chapter/") == true) {
 			android.util.Log.w("LocalMangaRepository", "Legacy EPUB chapter format detected: ${chapter.url}")
 			android.util.Log.w("LocalMangaRepository", "Please re-download this manga to use the new EPUB architecture")
-			// Return empty list to indicate unsupported format
 			return emptyList()
 		}
-		
+
 		// 普通章节，使用LocalContentParser
 		android.util.Log.d("LocalMangaRepository", "Using LocalContentParser for regular chapter")
-		return LocalContentParser(chapter.url.toUri()).getPages(chapter)
+		return LocalContentParser(requireNotNull(chapterUri) { "Invalid chapter url: ${chapter.url}" }).getPages(chapter)
 	}
 
 	override suspend fun getChapterContent(chapter: ContentChapter, nextChapterUrl: String?): NovelChapterContent? {

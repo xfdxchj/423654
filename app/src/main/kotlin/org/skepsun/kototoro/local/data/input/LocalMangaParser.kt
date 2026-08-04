@@ -21,6 +21,7 @@ import org.skepsun.kototoro.core.model.LocalVideoSource
 import org.skepsun.kototoro.parsers.model.ContentType
 import org.skepsun.kototoro.core.util.AlphanumComparator
 import org.skepsun.kototoro.core.util.MimeTypes
+import org.skepsun.kototoro.core.util.ext.URI_SCHEME_PDF
 import org.skepsun.kototoro.core.util.ext.URI_SCHEME_ZIP
 import org.skepsun.kototoro.core.util.ext.isDirectory
 import org.skepsun.kototoro.core.util.ext.isFileUri
@@ -386,7 +387,34 @@ class LocalContentParser {
 }
 
 	suspend fun getPages(chapter: ContentChapter): List<ContentPage> = runInterruptible(Dispatchers.IO) {
-		val chapterUri = chapter.url.toUri().resolve()
+		val chapterUriRaw = chapter.url.toUri()
+		// 兜底：如果是 PDF scheme，直接用 LocalPdfParser 处理，不往下走 resolveFsAndPath
+		if (chapterUriRaw.scheme == URI_SCHEME_PDF) {
+			android.util.Log.d("LocalMangaParser", "getPages: fallback PDF handling for ${chapter.url}")
+			val rawPath = chapterUriRaw.path
+				?: chapterUriRaw.schemeSpecificPart?.trimStart('/')?.let { "/$it" }
+			val pdfPath = rawPath
+				?: error("Cannot extract path from PDF uri: ${chapter.url}")
+			val pdfFile = File(pdfPath)
+			val parser = org.skepsun.kototoro.local.pdf.LocalPdfParser(pdfFile)
+			val pageCount = parser.pageCount()
+			if (pageCount <= 0) return@runInterruptible emptyList()
+			return@runInterruptible (0 until pageCount).map { i ->
+				val pageUrl = Uri.Builder()
+					.scheme(URI_SCHEME_PDF)
+					.path(pdfPath)
+					.fragment("page/$i")
+					.build()
+					.toString()
+				ContentPage(
+					id = "$pdfPath#$i".longHashCode(),
+					url = pageUrl,
+					preview = null,
+					source = chapter.source ?: LocalMangaSource,
+				)
+			}
+		}
+		val chapterUri = chapterUriRaw.resolve()
 		chapterUri.resolveFsAndPath().use { (fileSystem, rootPath) ->
 			if (fileSystem.metadataOrNull(rootPath)?.isDirectory != true) {
 				return@runInterruptible listOf(
@@ -635,6 +663,13 @@ class LocalContentParser {
 					} else {
 						FsAndPath(FileSystem.SYSTEM, file.toOkioPath(), isCloseable = false)
 					}
+				}
+
+				scheme == URI_SCHEME_PDF -> {
+					error(
+						"PDF URI should be handled before calling resolveFsAndPath, got: $this. " +
+							"Use LocalPdfParser or check Repository-layer PDF interception."
+					)
 				}
 
 				else -> throw IllegalArgumentException("Unsupported uri $resolved")
