@@ -30,6 +30,37 @@ jobs:
             echo "android.overridePathCheck=true" >> gradle.properties
           fi
 
+      - name: Disable native build if CMakeLists.txt missing in repo
+        run: |
+          if [ ! -f "app/src/main/cpp/CMakeLists.txt" ]; then
+            echo "CMakeLists.txt missing in repo, removing externalNativeBuild from build.gradle"
+            # 用 python 删除 externalNativeBuild { ... } 块（defaultConfig 和 android 两处）
+            python3 - <<'PY'
+            import re
+            with open('app/build.gradle', 'r', encoding='utf-8') as f:
+                content = f.read()
+            # 移除 defaultConfig 内的 externalNativeBuild { cmake { ... } }
+            content = re.sub(
+                r'(\s*)externalNativeBuild\s*\{\s*cmake\s*\{[^}]*\}\s*\}',
+                r'\1// externalNativeBuild disabled (CMakeLists.txt missing in CI)',
+                content,
+                flags=re.DOTALL,
+            )
+            # 移除 android 内的 externalNativeBuild { cmake { path "..." } }
+            content = re.sub(
+                r'(\s*)externalNativeBuild\s*\{\s*cmake\s*\{\s*path\s+"[^"]+"\s*\}\s*\}',
+                r'\1// externalNativeBuild disabled (CMakeLists.txt missing in CI)',
+                content,
+                flags=re.DOTALL,
+            )
+            with open('app/build.gradle', 'w', encoding='utf-8') as f:
+                f.write(content)
+            print("Patched build.gradle to disable externalNativeBuild")
+            PY
+          else
+            echo "CMakeLists.txt exists, keep native build"
+          fi
+
       - name: Compile Kotlin (fast validation)
         run: ./gradlew :app:compileDebugKotlin --no-daemon --stacktrace
         env:
