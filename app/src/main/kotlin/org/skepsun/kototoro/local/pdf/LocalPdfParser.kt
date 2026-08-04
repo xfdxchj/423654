@@ -289,21 +289,35 @@ class LocalPdfParser(
 
 		/**
 		 * 从 `pdf://<path>#page/<index>` URI 解析出 PDF 文件和页码。
-		 *
-		 * 使用鲁棒的字符串级判断，兼容 URI 中 `[` `]` 等未编码保留字符导致
-		 * [Uri.scheme] / [Uri.path] 为 null 的情况（`[` 是 IPv6 保留字符）。
+		 * 关键：必须对提取出的路径做 URL 百分号解码（URLDecoder.decode），
+		 * 因为 Uri.Builder.path() 会把特殊字符编码为 %XX。
 		 */
 		fun parsePageUri(uri: Uri): Pair<File, Int>? {
 			val raw = uri.toString()
-			val isPdf = uri.scheme == URI_SCHEME_PDF || raw.isPdfUriString()
+			val isPdf = uri.scheme == URI_SCHEME_PDF ||
+				raw.startsWith("pdf://", ignoreCase = true) ||
+				(raw.endsWith(".pdf", ignoreCase = true) && raw.contains("pdf://", ignoreCase = true))
 			if (!isPdf) return null
 
-			// 1) 从原始字符串提取 path（不依赖 Uri.path，因为可能解析失败）
-			val path = raw.extractPdfPath()
-				?: uri.path
-				?: return null
+			// 1) 从原始字符串提取路径（手写字符串操作，不依赖 Uri.path）
+			val withoutFrag = raw.substringBefore('#')
+			val withoutScheme = when {
+				withoutFrag.startsWith("pdf://", ignoreCase = true) -> withoutFrag.substring(6)
+				withoutFrag.startsWith("pdf", ignoreCase = true) -> withoutFrag.substring(3).trimStart(':')
+				else -> null
+			}
+			val trimmed = withoutScheme?.trimStart('/')
+			val rawPath = if (trimmed.isNullOrEmpty()) null else "/$trimmed"
+			if (rawPath == null) {
+				android.util.Log.e("LocalPdfParser", "parsePageUri: cannot extract raw path from $raw")
+				return null
+			}
+			// 【关键】URL 百分号解码
+			val decodedPath = runCatching {
+				java.net.URLDecoder.decode(rawPath, "UTF-8")
+			}.getOrDefault(rawPath)
 
-			// 2) 从原始字符串提取 fragment（#page/<index>），不依赖 uri.fragment（可能 null）
+			// 2) 提取页码 fragment
 			val hashIdx = raw.lastIndexOf('#')
 			val fragment = if (hashIdx >= 0) raw.substring(hashIdx + 1) else uri.fragment
 			val pageIndex = fragment
@@ -311,8 +325,8 @@ class LocalPdfParser(
 				?.toIntOrNull()
 				?: return null
 
-			android.util.Log.d("LocalPdfParser", "parsePageUri: ok path=$path page=$pageIndex (raw=$raw)")
-			return File(path) to pageIndex
+			android.util.Log.d("LocalPdfParser", "parsePageUri: rawPath=$rawPath decodedPath=$decodedPath page=$pageIndex")
+			return File(decodedPath) to pageIndex
 		}
 	}
 }

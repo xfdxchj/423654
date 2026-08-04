@@ -389,16 +389,14 @@ class LocalContentParser {
 }
 
 	suspend fun getPages(chapter: ContentChapter): List<ContentPage> = runInterruptible(Dispatchers.IO) {
-		// 【V5 终极保险】完全手写字符串判断，不依赖任何扩展函数、任何 Uri.parse 结果。
-		// 之前的失败是因为：Android 的 Uri.parse 遇到未编码 [ ] 会把 scheme 解析为 null，
-		// 所以我们**只用字符串 startsWith / substringBefore**，完全不依赖 Uri。
+		// 【V6 终极修复】完全手写字符串判断 + URL 百分号解码。
+		// Uri.Builder.path() 会把特殊字符编码为 %XX，提取后必须解码回来。
 		val url: String = chapter.url
 		val pdfPrefix = "pdf://"
 		if (url.startsWith(pdfPrefix, ignoreCase = true) ||
 			(url.endsWith(".pdf", ignoreCase = true) && url.contains(pdfPrefix, ignoreCase = true))
 		) {
-			android.util.Log.d("LocalMangaParser", "V5 PDF interception: url=$url")
-			// 手动提取路径：去掉 pdf:// 前缀，去掉 #fragment，去掉多余的 // 前缀
+			android.util.Log.d("LocalMangaParser", "V6 PDF interception: url=$url")
 			val withoutFrag = url.substringBefore('#')
 			val withoutScheme = when {
 				withoutFrag.startsWith(pdfPrefix, ignoreCase = true) ->
@@ -408,15 +406,24 @@ class LocalContentParser {
 				else -> null
 			}
 			val trimmed = withoutScheme?.trimStart('/')
-			val pdfPath = if (trimmed.isNullOrEmpty()) null else "/$trimmed"
-			if (pdfPath == null) {
-				android.util.Log.e("LocalMangaParser", "V5 PDF: cannot extract path from url=$url")
+			val rawPath = if (trimmed.isNullOrEmpty()) null else "/$trimmed"
+			if (rawPath == null) {
+				android.util.Log.e("LocalMangaParser", "V6 PDF: cannot extract raw path from url=$url")
 				return@runInterruptible emptyList()
 			}
+			// 【关键】URL 百分号解码
+			val pdfPath = runCatching {
+				java.net.URLDecoder.decode(rawPath, "UTF-8")
+			}.getOrDefault(rawPath)
 			val pdfFile = File(pdfPath)
+			android.util.Log.d("LocalMangaParser", "V6 PDF: rawPath=$rawPath decodedPath=$pdfPath exists=${pdfFile.exists()} readable=${pdfFile.canRead()}")
+			if (!pdfFile.exists() || !pdfFile.canRead()) {
+				android.util.Log.e("LocalMangaParser", "V6 PDF: file not found: $pdfPath")
+				return@runInterruptible emptyList()
+			}
 			val parser = org.skepsun.kototoro.local.pdf.LocalPdfParser(pdfFile)
 			val pageCount = parser.pageCount()
-			android.util.Log.d("LocalMangaParser", "V5 PDF: pageCount=$pageCount, file=$pdfFile")
+			android.util.Log.d("LocalMangaParser", "V6 PDF: pageCount=$pageCount")
 			if (pageCount <= 0) return@runInterruptible emptyList()
 			return@runInterruptible (0 until pageCount).map { i ->
 				val pageUrl = android.net.Uri.Builder()
@@ -665,8 +672,6 @@ class LocalContentParser {
 		@Blocking
 		private fun Uri.resolveFsAndPath(): FsAndPath {
 			val resolved = resolve()
-			// 【V5 终极保险】在用 scheme 判断之前，先用纯字符串判断是不是 PDF URI，
-			// 因为 Uri.parse 对未编码的 [ ] 字符会把 scheme 解析成 null，导致 when 漏匹配。
 			val raw: String = toString()
 			val rawResolved: String = resolved.toString()
 			if ((resolved.scheme == URI_SCHEME_PDF) ||
@@ -677,8 +682,6 @@ class LocalContentParser {
 						(raw.contains("pdf://", ignoreCase = true) || rawResolved.contains("pdf://", ignoreCase = true))
 					)
 			) {
-				// 走到这里说明前面两层（Repository + Parser 入口）的 V5 拦截都漏了，
-				// 现在手动从原始字符串里提取出 path，封装成 FsAndPath（直接指向 PDF 文件）
 				val rawForParse = raw.takeIf { it.startsWith("pdf://", ignoreCase = true) } ?: rawResolved
 				val withoutFrag = rawForParse.substringBefore('#')
 				val withoutScheme = when {
@@ -687,20 +690,25 @@ class LocalContentParser {
 					else -> null
 				}
 				val trimmed = withoutScheme?.trimStart('/')
-				val pathStr = if (trimmed.isNullOrEmpty()) null else "/$trimmed"
-				val f = if (pathStr != null) File(pathStr) else null
-				if (f != null && f.isFile && f.canRead()) {
-					android.util.Log.w(
-						"LocalMangaParser",
-						"resolveFsAndPath: PDF URI intercepted at LAST LAYER (raw=$raw). Repository/Parser layers missed it!",
+				val rawPath = if (trimmed.isNullOrEmpty()) null else "/$trimmed"
+				if (rawPath != null) {
+					// 【关键】URL 百分号解码
+					val decodedPath = runCatching {
+						java.net.URLDecoder.decode(rawPath, "UTF-8")
+					}.getOrDefault(rawPath)
+					val f = File(decodedPath)
+					if (f.isFile && f.canRead()) {
+						android.util.Log.w(
+							"LocalMangaParser",
+							"V6 resolveFsAndPath: PDF at LAST LAYER (raw=$raw decoded=$decodedPath). Upper layers missed!",
+						)
+						return FsAndPath(FileSystem.SYSTEM, f.toOkioPath(), isCloseable = false)
+					}
+					throw IllegalArgumentException(
+						"PDF URI intercepted but file not found. raw=$raw decoded=$decodedPath exists=${f.exists()}"
 					)
-					// 返回一个指向真实文件路径的 FsAndPath
-					return FsAndPath(FileSystem.SYSTEM, f.toOkioPath(), isCloseable = false)
 				}
-				// 连兜底路径提取都失败，抛一个更明确的错误（含 raw 字符串），方便日志排查
-				throw IllegalArgumentException(
-					"PDF URI intercepted but cannot extract path. raw=$raw resolved=$resolved"
-				)
+				throw IllegalArgumentException("PDF URI intercepted but cannot extract path. raw=$raw")
 			}
 			return when {
 				resolved.isZipUri() -> FsAndPath(

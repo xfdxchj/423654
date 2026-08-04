@@ -164,15 +164,15 @@ class LocalMangaRepository @Inject constructor(
 			return repositoryFactory.get().create(chapter.source).getPages(chapter, nextChapterUrl)
 		}
 
-		// 【V5 终极保险】完全手写字符串判断 + 手写路径提取，不依赖任何扩展函数和 Uri.parse 结果。
-		// 之前拦截失败的原因：Android Uri.parse 遇到未编码的 [ ]（IPv6 保留字符）时，scheme 会解析成 null，
-		// 导致 scheme == "pdf" 判断失败，字符串扩展函数也可能因为 import 问题没生效。
+		// 【V6 终极修复】加上 URL 百分号解码！
+		// Uri.Builder.path() 会把路径里的特殊字符（日文、空格等）编码成 %XX，
+		// 提取路径后必须用 URLDecoder.decode 解码回来，否则 File.exists() 永远返回 false。
 		val url: String = chapter.url
 		val pdfPrefix = "pdf://"
 		val isPdf = url.startsWith(pdfPrefix, ignoreCase = true) ||
 			(url.endsWith(".pdf", ignoreCase = true) && url.contains(pdfPrefix, ignoreCase = true))
 
-		android.util.Log.d("LocalMangaRepository", "V5 getPages: url=$url isPdf=$isPdf title=${chapter.title}")
+		android.util.Log.d("LocalMangaRepository", "V6 getPages: url=$url isPdf=$isPdf title=${chapter.title}")
 
 		if (isPdf) {
 			// 手动提取路径：去掉 pdf:// 前缀，去掉 # 之后的 fragment，再去多余的 '/'
@@ -185,16 +185,24 @@ class LocalMangaRepository @Inject constructor(
 				else -> null
 			}
 			val trimmed = withoutScheme?.trimStart('/')
-			val pdfPath = if (trimmed.isNullOrEmpty()) null else "/$trimmed"
-			if (pdfPath == null) {
-				android.util.Log.e("LocalMangaRepository", "V5 PDF: cannot extract path from url=$url")
+			val rawPath = if (trimmed.isNullOrEmpty()) null else "/$trimmed"
+			if (rawPath == null) {
+				android.util.Log.e("LocalMangaRepository", "V6 PDF: cannot extract raw path from url=$url")
 				return emptyList()
 			}
+			// 【关键】URL 百分号解码！
+			val pdfPath = runCatching {
+				java.net.URLDecoder.decode(rawPath, "UTF-8")
+			}.getOrDefault(rawPath)
 			val pdfFile = java.io.File(pdfPath)
-			android.util.Log.d("LocalMangaRepository", "V5 PDF: path=$pdfPath exists=${pdfFile.exists()} readable=${pdfFile.canRead()}")
+			android.util.Log.d("LocalMangaRepository", "V6 PDF: rawPath=$rawPath decodedPath=$pdfPath exists=${pdfFile.exists()} readable=${pdfFile.canRead()}")
+			if (!pdfFile.exists() || !pdfFile.canRead()) {
+				android.util.Log.e("LocalMangaRepository", "V6 PDF: file not found or not readable: $pdfPath")
+				return emptyList()
+			}
 			val parser = org.skepsun.kototoro.local.pdf.LocalPdfParser(pdfFile)
 			val pageCount = parser.pageCount()
-			android.util.Log.d("LocalMangaRepository", "V5 PDF: pageCount=$pageCount")
+			android.util.Log.d("LocalMangaRepository", "V6 PDF: pageCount=$pageCount")
 			if (pageCount <= 0) return emptyList()
 			return (0 until pageCount).map { i ->
 				val pageUrl = android.net.Uri.Builder()
