@@ -19,6 +19,8 @@ import org.skepsun.kototoro.parsers.model.NovelChapterContent
 import org.skepsun.kototoro.core.prefs.AppSettings
 import org.skepsun.kototoro.core.util.AlphanumComparator
 import org.skepsun.kototoro.core.util.ext.URI_SCHEME_PDF
+import org.skepsun.kototoro.core.util.ext.extractPdfPath
+import org.skepsun.kototoro.core.util.ext.isPdfUriString
 import org.skepsun.kototoro.core.util.ext.deleteAwait
 import org.skepsun.kototoro.core.util.ext.printStackTraceDebug
 import org.skepsun.kototoro.core.util.ext.takeIfWriteable
@@ -162,10 +164,55 @@ class LocalMangaRepository @Inject constructor(
 			return repositoryFactory.get().create(chapter.source).getPages(chapter, nextChapterUrl)
 		}
 
-		android.util.Log.d("LocalMangaRepository", "getPages: chapter.url=${chapter.url}, title=${chapter.title}")
+		// 【V5 终极保险】完全手写字符串判断 + 手写路径提取，不依赖任何扩展函数和 Uri.parse 结果。
+		// 之前拦截失败的原因：Android Uri.parse 遇到未编码的 [ ]（IPv6 保留字符）时，scheme 会解析成 null，
+		// 导致 scheme == "pdf" 判断失败，字符串扩展函数也可能因为 import 问题没生效。
+		val url: String = chapter.url
+		val pdfPrefix = "pdf://"
+		val isPdf = url.startsWith(pdfPrefix, ignoreCase = true) ||
+			(url.endsWith(".pdf", ignoreCase = true) && url.contains(pdfPrefix, ignoreCase = true))
 
-		// 先用 Uri.parse 解析出 scheme，避免字符串前缀匹配对编码/格式的脆弱依赖
-		val chapterUri = runCatching { chapter.url.toUri() }.getOrNull()
+		android.util.Log.d("LocalMangaRepository", "V5 getPages: url=$url isPdf=$isPdf title=${chapter.title}")
+
+		if (isPdf) {
+			// 手动提取路径：去掉 pdf:// 前缀，去掉 # 之后的 fragment，再去多余的 '/'
+			val withoutFrag = url.substringBefore('#')
+			val withoutScheme = when {
+				withoutFrag.startsWith(pdfPrefix, ignoreCase = true) ->
+					withoutFrag.substring(pdfPrefix.length)
+				withoutFrag.startsWith("pdf", ignoreCase = true) ->
+					withoutFrag.substring(3).trimStart(':')
+				else -> null
+			}
+			val trimmed = withoutScheme?.trimStart('/')
+			val pdfPath = if (trimmed.isNullOrEmpty()) null else "/$trimmed"
+			if (pdfPath == null) {
+				android.util.Log.e("LocalMangaRepository", "V5 PDF: cannot extract path from url=$url")
+				return emptyList()
+			}
+			val pdfFile = java.io.File(pdfPath)
+			android.util.Log.d("LocalMangaRepository", "V5 PDF: path=$pdfPath exists=${pdfFile.exists()} readable=${pdfFile.canRead()}")
+			val parser = org.skepsun.kototoro.local.pdf.LocalPdfParser(pdfFile)
+			val pageCount = parser.pageCount()
+			android.util.Log.d("LocalMangaRepository", "V5 PDF: pageCount=$pageCount")
+			if (pageCount <= 0) return emptyList()
+			return (0 until pageCount).map { i ->
+				val pageUrl = android.net.Uri.Builder()
+					.scheme("pdf")
+					.path(pdfPath)
+					.fragment("page/$i")
+					.build()
+					.toString()
+				ContentPage(
+					id = "$pdfPath#$i".hashCode().toLong().let { if (it < 0) -it else it },
+					url = pageUrl,
+					preview = null,
+					source = LocalMangaSource,
+				)
+			}
+		}
+
+		val chapterUri = runCatching { url.toUri() }.getOrNull()
 		val scheme = chapterUri?.scheme
 
 		// NEW ARCHITECTURE: EPUB chapters use epub:// protocol
@@ -181,46 +228,15 @@ class LocalMangaRepository @Inject constructor(
 			)
 		}
 
-		// PDF 章节：使用 pdf:// 协议，按页拆分成 ContentPage 列表
-		if (scheme == URI_SCHEME_PDF) {
-			android.util.Log.d("LocalMangaRepository", "PDF chapter detected: ${chapter.url}")
-			// 兼容两种情况：
-			// 1) chapter URL 无 fragment（仅指向 PDF 文件）→  uri.path 有效
-			// 2) 用户数据库里存的是旧格式 / 被 Uri 规范化的格式 → 用 uri.schemeSpecificPart + 手动去 // 前缀兜底
-			val rawPath = chapterUri.path
-				?: chapterUri.schemeSpecificPart
-					?.trimStart('/')
-					?.let { "/$it" }
-			val pdfPath = rawPath ?: return emptyList()
-			val pdfFile = java.io.File(pdfPath)
-			val parser = org.skepsun.kototoro.local.pdf.LocalPdfParser(pdfFile)
-			val pageCount = parser.pageCount()
-			if (pageCount <= 0) return emptyList()
-			return (0 until pageCount).map { i ->
-				val pageUrl = android.net.Uri.Builder()
-					.scheme(URI_SCHEME_PDF)
-					.path(pdfPath)
-					.fragment("page/$i")
-					.build()
-					.toString()
-				ContentPage(
-					id = "$pdfPath#$i".longHashCode(),
-					url = pageUrl,
-					preview = null,
-					source = LocalMangaSource,
-				)
-			}
-		}
-
 		// Legacy EPUB chapters with file://path#chapter/N format are no longer supported
-		if (scheme == "file" && chapterUri.fragment?.contains("chapter/") == true) {
+		if (scheme == "file" && chapterUri?.fragment?.contains("chapter/") == true) {
 			android.util.Log.w("LocalMangaRepository", "Legacy EPUB chapter format detected: ${chapter.url}")
 			android.util.Log.w("LocalMangaRepository", "Please re-download this manga to use the new EPUB architecture")
 			return emptyList()
 		}
 
 		// 普通章节，使用LocalContentParser
-		android.util.Log.d("LocalMangaRepository", "Using LocalContentParser for regular chapter")
+		android.util.Log.d("LocalMangaRepository", "V5: fallback to LocalContentParser (scheme=$scheme")
 		return LocalContentParser(requireNotNull(chapterUri) { "Invalid chapter url: ${chapter.url}" }).getPages(chapter)
 	}
 

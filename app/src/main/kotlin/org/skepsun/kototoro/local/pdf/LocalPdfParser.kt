@@ -8,6 +8,8 @@ import android.os.ParcelFileDescriptor
 import androidx.core.net.toUri
 import org.skepsun.kototoro.core.model.LocalMangaSource
 import org.skepsun.kototoro.core.util.ext.URI_SCHEME_PDF
+import org.skepsun.kototoro.core.util.ext.extractPdfPath
+import org.skepsun.kototoro.core.util.ext.isPdfUriString
 import org.skepsun.kototoro.parsers.model.Content
 import org.skepsun.kototoro.parsers.model.ContentChapter
 import org.skepsun.kototoro.parsers.model.ContentPage
@@ -285,14 +287,31 @@ class LocalPdfParser(
 	companion object {
 		private val COVER_EXTENSIONS = setOf("jpg", "jpeg", "png", "webp", "bmp")
 
-		/** 从 `pdf://<path>#page/<index>` URI 解析出 PDF 文件和页码。 */
+		/**
+		 * 从 `pdf://<path>#page/<index>` URI 解析出 PDF 文件和页码。
+		 *
+		 * 使用鲁棒的字符串级判断，兼容 URI 中 `[` `]` 等未编码保留字符导致
+		 * [Uri.scheme] / [Uri.path] 为 null 的情况（`[` 是 IPv6 保留字符）。
+		 */
 		fun parsePageUri(uri: Uri): Pair<File, Int>? {
-			if (uri.scheme != URI_SCHEME_PDF) return null
-			// 注意：schemeSpecificPart 对于 pdf:///storage/... 会返回 "//storage/..."（带 // 前缀），
-			// File("//path") 在某些 Android 版本上会解析失败，必须用 uri.path 或去掉前缀。
-			val path = uri.path ?: return null
-			val pageFragment = uri.fragment ?: return null
-			val pageIndex = pageFragment.removePrefix("page/").toIntOrNull() ?: return null
+			val raw = uri.toString()
+			val isPdf = uri.scheme == URI_SCHEME_PDF || raw.isPdfUriString()
+			if (!isPdf) return null
+
+			// 1) 从原始字符串提取 path（不依赖 Uri.path，因为可能解析失败）
+			val path = raw.extractPdfPath()
+				?: uri.path
+				?: return null
+
+			// 2) 从原始字符串提取 fragment（#page/<index>），不依赖 uri.fragment（可能 null）
+			val hashIdx = raw.lastIndexOf('#')
+			val fragment = if (hashIdx >= 0) raw.substring(hashIdx + 1) else uri.fragment
+			val pageIndex = fragment
+				?.removePrefix("page/")
+				?.toIntOrNull()
+				?: return null
+
+			android.util.Log.d("LocalPdfParser", "parsePageUri: ok path=$path page=$pageIndex (raw=$raw)")
 			return File(path) to pageIndex
 		}
 	}
