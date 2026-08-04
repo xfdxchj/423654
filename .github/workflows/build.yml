@@ -22,6 +22,11 @@ jobs:
           distribution: 'temurin'
           cache: 'gradle'
 
+      - name: Clean any stale gradle init scripts (e.g. broken mirror.gradle from previous runs)
+        run: |
+          rm -rf ~/.gradle/init.d
+          mkdir -p ~/.gradle/init.d
+
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
