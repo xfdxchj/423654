@@ -1,0 +1,378 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+	<!--AlertDialog-->
+
+	<style name="ThemeOverlay.Kototoro.AlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
+		<item name="alertDialogStyle">@style/AlertDialog.Kototoro</item>
+		<item name="dialogCornerRadius">@dimen/m3_alert_dialog_corner_size</item>
+	</style>
+
+	<style name="AlertDialog.Kototoro" parent="MaterialAlertDialog.Material3">
+		<item name="android:background">@drawable/m3_popup_background</item>
+	</style>
+
+	<!-- Bottom sheet -->
+
+	<style name="ThemeOverlay.Kototoro.BottomSheetDialog" parent="ThemeOverlay.Material3.BottomSheetDialog">
+		<item name="android:windowAnimationStyle">@style/Animation.Kototoro.BottomSheetDialog</item>
+		<item name="bottomSheetStyle">@style/Widget.Kototoro.BottomSheet.Modal</item>
+	</style>
+
+	<style name="ThemeOverlay.Kototoro.SideSheetDialog" parent="ThemeOverlay.Material3.SideSheetDialog" />
+
+	<style name="Widget.Kototoro.BottomSheet.Modal" parent="Widget.Material3.BottomSheet.Modal">
+		<item name="paddingBottomSystemWindowInsets">false</item>
+	</style>
+
+	<style name="Widget.Kototoro.BottomSheet.DragHandle" parent="Widget.Material3.BottomSheet.DragHandle">
+		<!-- Fix weird bottom padding -->
+		<item name="android:paddingBottom">0dp</item>
+	</style>
+
+	<style name="Widget.Kototoro.Spinner.DropDown" parent="Widget.AppCompat.Spinner.DropDown">
+		<item name="android:popupBackground">@drawable/m3_spinner_popup_background</item>
+		<item name="android:elevation">8dp</item>
+		<item name="android:popupElevation">3dp</item>
+	</style>
+
+	<style name="Animation.Kototoro.BottomSheetDialog" parent="Animation.AppCompat.Dialog">
+		<item name="android:windowEnterAnimation">@anim/bottom_sheet_slide_in</item>
+		<item name="android:windowExitAnimation">@anim/bottom_sheet_slide_out</item>
+	</style>
+
+	<!-- Widget styles -->
+
+	<style name="Widget.Kototoro.SearchView" parent="@style/Widget.AppCompat.SearchView">
+		<item name="iconifiedByDefault">false</item>
+		<item name="searchIcon">@null</item>
+		<item name="queryBackground">@null</item>
+		<item name="android:textAppearance">@style/TextAppearance.Kototoro.SearchView</item>
+		<item name="android:textSize">18sp</item>
+	</style>
+
+	<style name="Widget.Kototoro.CircularProgressIndicator.ThickStraight" parent="Widget.Material3.CircularProgressIndicator" />
+	<style name="Widget.Kototoro.LinearProgressIndicator.ThickStraight" parent="Widget.Material3.LinearProgressIndicator" />
+
+	<style name="Widget.Kototoro.CircularProgressIndicator.ThickWavy" parent="Widget.Material3Expressive.CircularProgressIndicator.Wavy" />
+	<style name="Widget.Kototoro.LinearProgressIndicator.ThickWavy" parent="Widget.Material3Expressive.LinearProgressIndicator.Wavy" />
+
+	<style name="Widget.Kototoro.CircularProgressIndicator.ThinStraight" parent="Widget.MaterialComponents.CircularProgressIndicator" />
+	<style name="Widget.Kototoro.LinearProgressIndicator.ThinStraight" parent="Widget.MaterialComponents.LinearProgressIndicator" />
+
+	<style name="Widget.Kototoro.CircularProgressIndicator.ThinWavy" parent="Widget.Material3Expressive.CircularProgressIndicator.Wavy">
+		<item name="trackThickness">2dp</item>
+	</style>
+	<style name="Widget.Kototoro.LinearProgressIndicator.ThinWavy" parent="Widget.Material3Expressive.LinearProgressIndicator.Wavy">
+		<item name="trackThickness">2dp</item>
+	</style>
+
+	<style name="ThemeOverlay.Kototoro.Loading.ThickStraight" parent="">
+		<item name="circularProgressIndicatorStyle">@style/Widget.Kototoro.CircularProgressIndicator.ThickStraight</item>
+		<item name="linearProgressIndicatorStyle">@style/Widget.Kototoro.LinearProgressIndicator.ThickStraight</item>
+	</style>
+
+	<style name="ThemeOverlay.Kototoro.Loading.ThickWavy" parent="">
+		<item name="circularProgressIndicatorStyle">@style/Widget.Kototoro.CircularProgressIndicator.ThickWavy</item>
+		<item name="linearProgressIndicatorStyle">@style/Widget.Kototoro.LinearProgressIndicator.ThickWavy</item>
+	</style>
+
+	<style name="ThemeOverlay.Kototoro.Loading.ThinStraight" parent="">
+		<item name="circularProgressIndicatorStyle">@style/Widget.Kototoro.CircularProgressIndicator.ThinStraight</item>
+		<item name="linearProgressIndicatorStyle">@style/Widget.Kototoro.LinearProgressIndicator.ThinStraight</item>
+	</style>
+
+	<style name="ThemeOverlay.Kototoro.Loading.ThinWavy" parent="">
+		<item name="circularProgressIndicatorStyle">@style/Widget.Kototoro.CircularProgressIndicator.ThinWavy</item>
+		<item name="linearProgressIndicatorStyle">@style/Widget.Kototoro.LinearProgressIndicator.ThinWavy</item>
+	</style>
+
+	<style name="Widget.Kototoro.LinearProgressIndicator" parent="Widget.Material3.LinearProgressIndicator">
+		<item name="trackCornerRadius">@dimen/mtrl_progress_indicator_full_rounded_corner_radius</item>
+	</style>
+
+	<style name="Widget.Kototoro.Chip" parent="Widget.Material3.Chip.Suggestion" />
+
+	<style name="Widget.Kototoro.Chip.Filter" parent="Widget.Material3.Chip.Filter" />
+
+	<style name="Widget.Kototoro.Chip.Assist" parent="Widget.Material3.Chip.Assist" />
+
+	<style name="Widget.Kototoro.Chip.Dropdown" parent="Widget.Material3.Chip.Assist">
+		<item name="closeIconVisible">true</item>
+		<item name="closeIcon">@drawable/ic_expand_more</item>
+		<item name="chipIconVisible">true</item>
+	</style>
+
+	<style name="Widget.Kototoro.Button.More" parent="Widget.Material3.Button.TextButton">
+		<item name="android:minWidth">48dp</item>
+	</style>
+
+	<style name="Widget.Kototoro.Button.More.Small">
+		<item name="android:insetTop">0dp</item>
+		<item name="android:insetBottom">0dp</item>
+		<item name="android:minHeight">42dp</item>
+	</style>
+
+	<style name="Widget.Kototoro.ToggleButton" parent="Widget.Material3.Button.OutlinedButton">
+		<item name="android:checkable">true</item>
+		<item name="android:textAlignment">textStart</item>
+		<item name="iconPadding">16dp</item>
+	</style>
+
+	<style name="Widget.Kototoro.ToggleButton.Vertical">
+		<item name="android:textAlignment">center</item>
+		<item name="iconPadding">2dp</item>
+		<item name="android:singleLine">false</item>
+		<item name="iconGravity">top</item>
+		<item name="android:paddingTop">12dp</item>
+		<item name="android:paddingBottom">10dp</item>
+		<item name="android:paddingStart">6dp</item>
+		<item name="android:paddingEnd">6dp</item>
+		<item name="android:elegantTextHeight">false</item>
+		<item name="shapeAppearance">?shapeAppearanceCornerMedium</item>
+	</style>
+
+	<!-- Transparent icon button style for video player -->
+	<style name="Widget.Kototoro.IconButton.Transparent" parent="Widget.Material3.Button.IconButton">
+		<item name="android:background">@android:color/transparent</item>
+		<item name="backgroundTint">@android:color/transparent</item>
+		<item name="rippleColor">?attr/colorControlHighlight</item>
+	</style>
+
+	<style name="Widget.Kototoro.TextButton.Transparent" parent="Widget.Material3.Button.TextButton">
+		<item name="android:background">@android:color/transparent</item>
+		<item name="backgroundTint">@android:color/transparent</item>
+		<item name="rippleColor">?attr/colorControlHighlight</item>
+		<item name="android:minHeight">40dp</item>
+		<item name="android:minWidth">0dp</item>
+		<item name="android:insetTop">0dp</item>
+		<item name="android:insetBottom">0dp</item>
+		<item name="android:paddingTop">0dp</item>
+		<item name="android:paddingBottom">0dp</item>
+		<item name="android:gravity">center</item>
+	</style>
+
+
+	<style name="Widget.Kototoro.Slider" parent="Widget.Material3.Slider">
+		<item name="android:minHeight">48dp</item>
+		<item name="thumbWidth">6dp</item>
+		<item name="thumbHeight">24dp</item>
+		<item name="thumbStrokeWidth">0dp</item>
+		<item name="trackCornerSize">4dp</item>
+		<item name="trackHeight">8dp</item>
+		<item name="haloRadius">18dp</item>
+		<item name="tickRadiusActive">2dp</item>
+		<item name="tickRadiusInactive">2dp</item>
+	</style>
+
+	<style name="Widget.Kototoro.RecyclerView" parent="">
+		<item name="android:scrollbarStyle">outsideOverlay</item>
+		<item name="android:clipToPadding">false</item>
+	</style>
+
+	<style name="Widget.Kototoro.DotIndicator" parent="" />
+
+	<style name="Widget.Kototoro.BadgeView" parent="">
+		<item name="android:textColor">@macro/m3_comp_badge_large_label_text_color</item>
+		<item name="android:minWidth">@dimen/m3_badge_with_text_size</item>
+		<item name="android:minHeight">@dimen/m3_badge_with_text_size</item>
+		<item name="android:textAppearance">@macro/m3_comp_badge_large_label_text_type</item>
+		<item name="android:gravity">center</item>
+		<item name="shapeAppearance">@style/ShapeAppearance.M3.Comp.Badge.Shape</item>
+		<item name="backgroundColor">?attr/colorError</item>
+		<item name="android:elegantTextHeight">false</item>
+		<item name="singleLine">true</item>
+		<item name="android:outlineProvider">background</item>
+	</style>
+
+	<style name="Widget.Kototoro.ListItemTextView" parent="">
+		<item name="android:textColor">@color/list_item_text_color</item>
+		<item name="backgroundFillColor">@color/list_item_background_color</item>
+		<item name="checkedDrawableStart">@drawable/ic_check</item>
+		<item name="shapeAppearanceOverlay">@style/ShapeAppearanceOverlay.Material3.NavigationView.Item</item>
+		<item name="android:gravity">center_vertical|start</item>
+		<item name="android:insetRight">6dp</item>
+		<item name="android:insetLeft">6dp</item>
+		<item name="android:insetTop">2dp</item>
+		<item name="android:insetBottom">2dp</item>
+		<item name="android:textAppearance">?textAppearanceListItem</item>
+		<item name="android:minHeight">?android:listPreferredItemHeightSmall</item>
+		<item name="android:drawablePadding">?android:listPreferredItemPaddingStart</item>
+		<item name="android:paddingStart">?android:listPreferredItemPaddingStart</item>
+		<item name="android:paddingEnd">?android:listPreferredItemPaddingEnd</item>
+	</style>
+
+	<style name="Widget.Kototoro.ExploreButton" parent="Widget.Material3.Button.ElevatedButton.Icon">
+		<item name="android:minHeight">56dp</item>
+		<item name="android:singleLine">true</item>
+		<item name="shapeAppearance">?shapeAppearanceCornerExtraLarge</item>
+		<item name="android:ellipsize">marquee</item>
+		<item name="android:marqueeRepeatLimit">marquee_forever</item>
+		<item name="iconSize">22dp</item>
+		<item name="iconPadding">16dp</item>
+		<item name="iconGravity">start</item>
+		<item name="iconTint">?attr/colorPrimary</item>
+		<item name="android:textColor">?attr/colorPrimary</item>
+		<item name="android:insetTop">2dp</item>
+		<item name="android:insetBottom">2dp</item>
+		<item name="android:gravity">start|center_vertical</item>
+		<item name="backgroundTint">?attr/colorSurfaceContainerHigh</item>
+		<!-- Hack. Removing shadow. For AMOLED -->
+		<item name="android:outlineProvider">none</item>
+		<item name="elevation">24dp</item>
+	</style>
+
+	<style name="Widget.Kototoro.TextView.Indicator" parent="Widget.MaterialComponents.TextView">
+		<item name="android:drawablePadding">12dp</item>
+		<item name="android:gravity">center_vertical</item>
+		<item name="android:textAppearance">?textAppearanceLabelMedium</item>
+	</style>
+
+	<style name="Widget.Kototoro.TextView.Badge" parent="Widget.MaterialComponents.TextView">
+		<item name="android:background">@drawable/bg_chip</item>
+		<item name="android:gravity">center</item>
+		<item name="android:textAlignment">center</item>
+		<item name="android:paddingStart">4dp</item>
+		<item name="android:paddingEnd">4dp</item>
+		<item name="android:paddingTop">2dp</item>
+		<item name="android:paddingBottom">2dp</item>
+		<item name="android:textAppearance">?textAppearanceLabelMedium</item>
+		<item name="android:textColor">?colorOnBackground</item>
+	</style>
+
+	<style name="Widget.Kototoro.ImageView.Cover" parent="Widget.MaterialComponents.ShapeableImageView">
+		<item name="aspectRationHeight">18</item>
+		<item name="aspectRationWidth">13</item>
+		<item name="android:scaleType">centerCrop</item>
+		<item name="allowRgb565">true</item>
+		<item name="trimImage">true</item>
+	</style>
+
+	<style name="ThemeOverlay.Kototoro.MainToolbar" parent="">
+		<item name="colorControlHighlight">@color/selector_overlay</item>
+		<item name="actionButtonStyle">@style/Widget.AppCompat.ActionButton</item>
+	</style>
+
+	<style name="ThemeOverlay.Kototoro.VideoControls" parent="ThemeOverlay.Material3.Dark">
+		<item name="colorOnSurface">@android:color/white</item>
+		<item name="colorOnSurfaceVariant">@android:color/white</item>
+		<item name="colorOutline">#4DFFFFFF</item>
+		<item name="colorPrimary">@android:color/white</item>
+		<item name="colorSurfaceContainerHigh">#33000000</item>
+		<item name="colorControlNormal">@android:color/white</item>
+	</style>
+
+	<style name="ThemeOverlay.Kototoro.VideoInfoDialog" parent="ThemeOverlay.Material3.Dialog.Alert">
+		<item name="backgroundTint">@android:color/transparent</item>
+	</style>
+
+	<style name="ThemeOverlay.Kototoro.ActionMode" parent="">
+		<item name="colorOnSurface">?colorPrimary</item>
+		<item name="colorControlNormal">?colorPrimary</item>
+	</style>
+
+	<!-- TextAppearance -->
+
+	<style name="TextAppearance.Kototoro.SearchView" parent="TextAppearance.Material3.SearchBar">
+		<item name="android:textColor">?attr/colorOnSurfaceVariant</item>
+	</style>
+
+	<style name="TextAppearance.Widget.Menu" parent="TextAppearance.AppCompat.Menu">
+		<item name="android:textColor">?attr/colorOnBackground</item>
+	</style>
+
+	<style name="TextAppearance.Kototoro.Preference.Secondary" parent="TextAppearance.Material3.BodySmall" />
+
+	<style name="TextAppearance.Kototoro.GridTitle" parent="TextAppearance.Material3.TitleSmall" />
+
+	<style name="TextAppearance.Kototoro.GridTitle.Small" parent="TextAppearance.Material3.TitleSmall">
+		<item name="android:textSize">12sp</item>
+		<item name="android:letterSpacing">0.00714286</item>
+		<item name="lineHeight">14sp</item>
+		<item name="android:lineHeight" tools:ignore="NewApi">14sp</item>
+	</style>
+
+	<!-- Shapes -->
+
+	<style name="ShapeAppearanceOverlay.Kototoro.Cover" parent="">
+		<item name="cornerSize">12dp</item>
+	</style>
+
+	<style name="ShapeAppearanceOverlay.Kototoro.Cover.Medium" parent="">
+		<item name="cornerSize">8dp</item>
+	</style>
+
+	<style name="ShapeAppearanceOverlay.Kototoro.Cover.Small" parent="">
+		<item name="cornerSize">4dp</item>
+	</style>
+
+	<style name="ShapeAppearanceOverlay.Kototoro.Circle" parent="">
+		<item name="cornerFamily">rounded</item>
+		<item name="cornerSize">50%</item>
+	</style>
+
+	<style name="ShapeAppearanceOverlay.Material3.Corner.None" parent="">
+		<item name="cornerSizeBottomLeft">0dp</item>
+		<item name="cornerSizeBottomRight">0dp</item>
+		<item name="cornerSizeTopLeft">0dp</item>
+		<item name="cornerSizeTopRight">0dp</item>
+	</style>
+
+	<!--Preferences-->
+
+	<style name="PreferenceThemeOverlay.Kototoro">
+		<item name="singleLineTitle">false</item>
+	</style>
+
+	<style name="Preference.SwitchPreferenceCompat.M3" parent="Preference.SwitchPreferenceCompat.Material">
+		<item name="android:widgetLayout">@layout/preference_widget_material_switch</item>
+	</style>
+
+	<!-- Drawable -->
+
+	<style name="ProgressDrawable">
+		<item name="android:fillAlpha">1</item>
+		<item name="android:fillColor">?attr/colorPrimary</item>
+		<item name="android:strokeColor">?attr/colorSurfaceVariant</item>
+		<item name="android:textColor">?attr/colorOnPrimary</item>
+		<item name="strokeWidth">4dp</item>
+		<item name="android:textSize">9sp</item>
+		<item name="autoFitTextSize">true</item>
+	</style>
+
+	<style name="FaviconDrawable">
+		<item name="backgroundColor">?colorBackgroundFloating</item>
+		<item name="strokeColor">?colorOutline</item>
+	</style>
+
+	<style name="FaviconDrawable.Small">
+		<item name="strokeWidth">1dp</item>
+		<item name="cornerSize">8dp</item>
+	</style>
+
+	<style name="FaviconDrawable.Large">
+		<item name="strokeWidth">1dp</item>
+		<item name="cornerSize">12dp</item>
+	</style>
+
+	<style name="FaviconDrawable.Chip">
+		<item name="strokeWidth">1px</item>
+		<item name="cornerSize">@dimen/chip_icon_corner</item>
+		<item name="drawableSize">@dimen/m3_chip_icon_size</item>
+	</style>
+
+	<style name="FaviconDrawable.SourceIcon">
+		<item name="backgroundColor">@android:color/transparent</item>
+		<item name="strokeColor">@android:color/transparent</item>
+		<item name="strokeWidth">0dp</item>
+		<item name="cornerSize">0dp</item>
+		<item name="centerText">true</item>
+	</style>
+
+	<!-- Compact action button for SearchBar filter icons -->
+	<style name="Widget.Kototoro.ActionButton.Compact" parent="Widget.AppCompat.ActionButton">
+		<item name="android:minWidth">36dp</item>
+		<item name="android:paddingStart">2dp</item>
+		<item name="android:paddingEnd">2dp</item>
+	</style>
+
+</resources>

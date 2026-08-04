@@ -1,0 +1,91 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Override path check (non-ASCII project path)
+        run: |
+          if ! grep -q "android.overridePathCheck=true" gradle.properties; then
+            echo "android.overridePathCheck=true" >> gradle.properties
+          fi
+
+      - name: Setup Gradle cache proxy (optional mirrors)
+        run: |
+          mkdir -p ~/.gradle/init.d
+          cat > ~/.gradle/init.d/mirror.gradle <<'EOF'
+          allprojects {
+              repositories {
+                  all { ArtifactRepository repo ->
+                      if (repo instanceof MavenRepository) {
+                          def url = repo.url.toString()
+                          if (url.startsWith('https://repo1.maven.org/maven2') || url.startsWith('https://repo.maven.apache.org/maven2')) {
+                              remove repo
+                              maven { url 'https://maven.aliyun.com/repository/public' }
+                          }
+                          if (url.startsWith('https://dl.google.com/dl/android/maven2') || url.startsWith('https://maven.google.com')) {
+                              remove repo
+                              maven { url 'https://maven.aliyun.com/repository/google' }
+                          }
+                          if (url.startsWith('https://plugins.gradle.org/m2')) {
+                              remove repo
+                              maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+                          }
+                      }
+                  }
+              }
+          }
+          settingsEvaluated { settings ->
+              settings.pluginManagement {
+                  repositories {
+                      maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+                      maven { url 'https://maven.aliyun.com/repository/google' }
+                      maven { url 'https://maven.aliyun.com/repository/public' }
+                      gradlePluginPortal()
+                      google()
+                      mavenCentral()
+                  }
+              }
+          }
+          EOF
+
+      - name: Compile Kotlin (fast validation)
+        run: ./gradlew :app:compileDebugKotlin --no-daemon --stacktrace
+        env:
+          GRADLE_OPTS: "-Xmx6144M -Dorg.gradle.jvmargs=-Xmx6144M"
+
+      - name: Build Debug APK
+        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+        env:
+          GRADLE_OPTS: "-Xmx6144M -Dorg.gradle.jvmargs=-Xmx6144M"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/universal/debug/*.apk
+          if-no-files-found: error
+          retention-days: 30

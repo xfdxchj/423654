@@ -1,0 +1,135 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'  # 当推送 v* 标签时触发（如 v1.0.0）
+  repository_dispatch:
+    types: [trigger-release]  # 由 sync-parsers 触发
+  workflow_dispatch:  # 允许手动触发
+
+# 定义 tag 名称变量，根据触发方式选择来源
+env:
+  TAG_NAME: ${{ github.event_name == 'repository_dispatch' && github.event.client_payload.tag || github.ref_name }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        fetch-depth: 0
+    
+    - name: Generate Changelog
+      id: changelog
+      run: |
+        CURRENT_TAG="${{ env.TAG_NAME }}"
+        echo "Current Tag: $CURRENT_TAG"
+        
+        # Find the most recent tag before the current one
+        PREVIOUS_TAG=$(git describe --tags --abbrev=0 --exclude="$CURRENT_TAG" 2>/dev/null || echo "")
+        echo "Previous Tag: $PREVIOUS_TAG"
+        
+        if [ -z "$PREVIOUS_TAG" ]; then
+          echo "No previous tag found. Getting all logs."
+          CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
+        else
+          echo "Getting logs between $PREVIOUS_TAG and $CURRENT_TAG"
+          CHANGELOG=$(git log --pretty=format:"- %s (%h)" "$PREVIOUS_TAG..$CURRENT_TAG" --no-merges)
+        fi
+        
+        echo "changelog<<EOF" >> $GITHUB_OUTPUT
+        echo "$CHANGELOG" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+        echo "previous_tag=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
+    
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        cache: 'gradle'
+    
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+    
+    - name: Decode keystore
+      env:
+        KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      run: |
+        if [ -n "$KEYSTORE_BASE64" ]; then
+          echo "$KEYSTORE_BASE64" | base64 -d > release.keystore
+        else
+          echo "No keystore found, creating debug keystore"
+          keytool -genkey -v -keystore release.keystore -alias release \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass password -keypass password \
+            -dname "CN=Debug, OU=Debug, O=Debug, L=Debug, S=Debug, C=US"
+        fi
+    
+    - name: Build Release APK
+      run: |
+        ./gradlew assembleRelease --no-daemon --stacktrace \
+          -PRELEASE_STORE_FILE=../release.keystore \
+          -PRELEASE_STORE_PASSWORD="${{ secrets.KEYSTORE_PASSWORD || 'password' }}" \
+          -PRELEASE_KEY_ALIAS="${{ secrets.KEY_ALIAS || 'release' }}" \
+          -PRELEASE_KEY_PASSWORD="${{ secrets.KEY_PASSWORD || 'password' }}"
+    
+    - name: Get version info
+      id: version
+      run: |
+        VERSION_NAME=$(./gradlew -q printVersionName --no-daemon | tail -n 1)
+        VERSION_CODE=$(./gradlew -q printVersionCode --no-daemon | tail -n 1)
+        echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+        echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+        echo "Version: $VERSION_NAME ($VERSION_CODE)"
+    
+    - name: List build outputs
+      run: |
+        echo "Listing APK outputs:"
+        find app/build/outputs/apk -name "*.apk" -type f
+    
+    - name: Collect Release APKs
+      id: assets
+      run: |
+        mkdir -p release
+        shopt -s nullglob
+        APK_FILES=(app/build/outputs/apk/release/*.apk)
+        if [ ${#APK_FILES[@]} -eq 0 ]; then
+          echo "Error: No APK file found in app/build/outputs/apk/release"
+          exit 1
+        fi
+
+        for apk in "${APK_FILES[@]}"; do
+          filename=$(basename "$apk")
+          abi="${filename#app-}"
+          abi="${abi%-release-unsigned.apk}"
+          abi="${abi%-release.apk}"
+          if [ "$abi" = "$filename" ] || [ -z "$abi" ]; then
+            abi="universal"
+          fi
+          if [ "$abi" = "universal" ]; then
+            # Keep legacy filename for compatibility with old update clients.
+            target="release/Kototoro-${{ steps.version.outputs.version_name }}-release.apk"
+          else
+            target="release/Kototoro-${{ steps.version.outputs.version_name }}-${abi}-release.apk"
+          fi
+          cp "$apk" "$target"
+        done
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ env.TAG_NAME }}
+        files: |
+          release/*.apk
+        body: ${{ steps.changelog.outputs.changelog }}
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

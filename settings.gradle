@@ -1,0 +1,86 @@
+pluginManagement {
+	buildscript {
+		repositories {
+			google()
+			mavenCentral()
+			maven { url = uri("https://storage.googleapis.com/r8-releases/raw") }
+		}
+		dependencies {
+			classpath("com.android.tools:r8:8.12.30")
+		}
+	}
+	repositories {
+		google {
+			content {
+				includeGroupByRegex("com\\.android.*")
+				includeGroupByRegex("com\\.google.*")
+				includeGroupByRegex("androidx.*")
+			}
+		}
+		mavenCentral()
+		gradlePluginPortal()
+		maven { url 'https://maven.aliyun.com/repository/public' }
+        maven { url 'https://maven.aliyun.com/repository/google' }
+		maven {
+			url 'https://jitpack.io'
+			content {
+				includeGroupByRegex("com\\.github.*")
+			}
+		}
+	}
+}
+dependencyResolutionManagement {
+	repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+	repositories {
+		google()
+		mavenCentral()
+		maven {
+			url 'https://jitpack.io'
+			content {
+				includeGroupByRegex("com\\.github\\..*")
+				excludeGroup("com.github.bytedance")
+			}
+		}
+		maven {
+			url 'https://artifact.bytedance.com/repository/releases/'
+			content {
+				includeGroup("com.github.bytedance")
+			}
+		}
+		maven {
+			url 'https://maven.aliyun.com/repository/google'
+			content {
+				excludeGroup("com.github.bytedance")
+			}
+		}
+		maven {
+			url 'https://maven.aliyun.com/repository/public'
+			content {
+				excludeGroup("com.github.bytedance")
+			}
+		}
+	}
+}
+
+include ':app', ':parser-api'
+rootProject.name = "Kototoro"
+
+// 使用远程 DanmakuRenderEngine（本地工程 AGP 4.2.2 与当前 Gradle 不兼容）
+
+// 使用本地 kototoro-parsers 进行编译：通过复合构建替换远程依赖
+// 注释掉以使用在线版本（避免Java 8依赖问题）
+
+// includeBuild('../kototoro-parsers') {
+//     dependencySubstitution {
+//         // 将远程坐标 com.github.skepsun:kototoro-parsers 替换为本地项目
+//         substitute module('com.github.skepsun:kototoro-parsers') using project(':')
+//     }
+// }
+
+// 使用本地 kotatsu-parsers 进行编译：通过复合构建替换远程依赖
+// 注释掉以使用在线版本
+// includeBuild("../kotatsu-parsers") {
+//     dependencySubstitution {
+//         substitute module("com.github.Kotatsu-Redo:kotatsu-parsers-redo") using project(":")
+//     }
+// }

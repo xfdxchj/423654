@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<string name="url_github" translatable="false">https://github.com/Kototoro-app/Kototoro</string>
+	<string name="url_telegram_web" translatable="false">https://t.me/kototoroapp</string>
+	<string name="url_telegram" translatable="false">tg://resolve?domain=kototoroapp</string>
+	<string name="url_weblate" translatable="false">https://hosted.weblate.org/engage/kototoro</string>
+	<string name="url_user_manual" translatable="false">https://kototoro-app.github.io/Kototoro</string>
+	<string name="url_discord" translatable="false">https://discord.gg/xBXvPz7tr7</string>
+	<string name="url_error_report" translatable="false">https://bugs.kototoro.app/report</string>
+	<string name="account_type_sync" translatable="false">org.kototoro.sync</string>
+    <string name="github_updates_repo" translatable="false">Kototoro-app/Kototoro</string>
+	<string name="shikimori_clientId" translatable="false">5l5MXfd9WG7lsVlFSNSQG1ct1-A0M1LHqkg0HyEDiF4</string>
+	<string name="shikimori_clientSecret" translatable="false">YIGxvP6rxR-4Oi7L3nE7RhESIesosEUWmrMh9J6L_aY</string>
+	<string name="anilist_clientId" translatable="false">36636</string>
+	<string name="anilist_clientSecret" translatable="false">kQXqIZ0IAkcOkMencUvJ3jNEviaxkEtMhArtJlMu</string>
+	<string name="mal_clientId" translatable="false">4149b4cabbe3132f02dcd16eaaf9d420</string>
+	<string name="kitsu_clientId" translatable="false">dd031b32d2f56c990b1425efe6c42ad847e7fe3ab46bf1299f05ecd856bdb7dd</string>
+	<string name="kitsu_clientSecret" translatable="false">54d7307928f63414defd96399fc31ba847961ceaecef3a5fd93144e960c0e151</string>
+	<string name="bangumi_clientId" translatable="false">bgm561169986f82ce240</string>
+	<string name="bangumi_clientSecret" translatable="false">f48b29e0ee8a3aa155e68fda79ba5b5e</string>
+	<string name="simkl_clientId" translatable="false">24b0016374a5c2f6b54ef4049b5ae95bb05ab1fc967db3842e4be1c9dd0f8e7e</string>
+	<string name="simkl_clientSecret" translatable="false">2e84f311425a88f29890f81e122d6498b35a6c28c9241e0ade0dddbea5beeb8c</string>
+	<string name="acra_login" translatable="false">zPALLBPdpn5mnCB4</string>
+	<string name="acra_password" translatable="false">kgpuhoNJpSsQDCwu</string>
+	<string name="sync_authority_history" translatable="false">org.skepsun.kototoro.history</string>
+	<string name="sync_authority_favourites" translatable="false">org.skepsun.kototoro.favourites</string>
+	<string name="tg_backup_bot_name" translatable="false">kototoro_backup_bot</string>
+	<string name="discord_app_id" translatable="false">1533311715364831252</string>
+	<string name="app_icon_url" translatable="false">https://raw.githubusercontent.com/Kototoro-app/Kototoro/refs/heads/devel/metadata/en-US/icon.png</string>
+	<string-array name="values_theme" translatable="false">
+		<item>-1</item>
+		<item>1</item>
+		<item>2</item>
+	</string-array>
+	<string-array name="values_track_sources" translatable="false">
+		<item>favourites</item>
+		<item>history</item>
+	</string-array>
+	<string-array name="values_track_sources_default" translatable="false">
+		<item>favourites</item>
+	</string-array>
+	<string-array name="values_network_policy" translatable="false">
+		<item>1</item>
+		<item>2</item>
+		<item>0</item>
+	</string-array>
+	<string-array name="values_image_proxies" translatable="false">
+		<item>-1</item>
+		<item>0</item>
+		<item>1</item>
+	</string-array>
+	<string-array name="sync_url_list" translatable="false">
+		<item>https://sync.kotatsu.app</item>
+		<item>https://moe.shirizu.org</item>
+		<item>http://54.254.71.100</item>
+		<item>http://86.57.183.214:8081</item>
+	</string-array>
+	<string-array name="values_proxy_types" translatable="false">
+		<item>DIRECT</item>
+		<item>HTTP</item>
+		<item>SOCKS</item>
+	</string-array>
+	<string-array name="values_backup_frequency" translatable="false">
+		<item>0.25</item>
+		<item>1</item>
+		<item>2</item>
+		<item>7</item>
+		<item>14</item>
+		<item>30</item>
+	</string-array>
+	<string-array name="details_tabs_values" translatable="false">
+		<item>-1</item>
+		<item>0</item>
+		<item>1</item>
+		<item>2</item>
+	</string-array>
+	<string-array name="values_tracker_frequency" translatable="false">
+		<item>-1</item>
+		<item>0.4</item>
+		<item>1</item>
+		<item>2</item>
+	</string-array>
+	<string-array name="values_reader_crop" translatable="false">
+		<item>1</item>
+		<item>2</item>
+	</string-array>
+	<string-array name="values_list_badges" translatable="false">
+		<!-- MangaListMapper flags -->
+		<item>4</item>
+		<item>1</item>
+	</string-array>
+	<string-array name="values_loading_circle_style" translatable="false">
+		<item>thick_straight</item>
+		<item>thick_wavy</item>
+		<item>thin_straight</item>
+		<item>thin_wavy</item>
+	</string-array>
+	<string-array name="values_blur_mode" translatable="false">
+		<item>standard</item>
+		<item>immersive</item>
+		<item>enhanced</item>
+	</string-array>
+</resources>

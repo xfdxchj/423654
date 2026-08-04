@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<animated-vector xmlns:tools="http://schemas.android.com/tools"
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:aapt="http://schemas.android.com/aapt">
+	<aapt:attr name="android:drawable">
+		<vector
+			android:name="splash"
+			android:width="320dp"
+			android:height="320dp"
+			android:viewportWidth="320"
+			android:viewportHeight="320">
+			<group
+				android:name="scaleme"
+				android:pivotX="160"
+				android:pivotY="160"
+				android:scaleX="1"
+				android:scaleY="1">
+				<group android:name="bg">
+					<path
+						android:name="circle"
+						android:pathData="M 160 110 C 146.744 110 134.018 115.271 124.645 124.645 C 115.271 134.018 110 146.744 110 160 C 110 173.256 115.271 185.982 124.645 195.355 C 134.018 204.729 146.744 210 160 210 C 173.256 210 185.982 204.729 195.355 195.355 C 204.729 185.982 210 173.256 210 160 C 210 146.744 204.729 134.018 195.355 124.645 C 185.982 115.271 173.256 110 160 110 Z"
+						android:fillColor="@color/m3_sys_color_dynamic_dark_primary_container"
+						android:fillAlpha="0"
+						android:strokeWidth="1" />
+				</group>
+				<group
+					android:name="fg"
+					android:pivotX="160"
+					android:pivotY="160"
+					android:scaleX="0"
+					android:scaleY="0">
+					<clip-path
+						android:name="mask"
+						android:pathData="M 160 60 C 133.489 60 108.036 70.543 89.289 89.289 C 70.543 108.036 60 133.489 60 160 C 60 186.511 70.543 211.964 89.289 230.711 C 108.036 249.457 133.489 260 160 260 C 186.511 260 211.964 249.457 230.711 230.711 C 249.457 211.964 260 186.511 260 160 C 260 133.489 249.457 108.036 230.711 89.289 C 211.964 70.543 186.511 60 160 60 Z" />
+					<group
+						android:name="totoro_group"
+						android:scaleX="1"
+						android:scaleY="1">
+						<!-- Minimalist Totoro -->
+						<path
+							android:name="totoro"
+							android:fillColor="@color/m3_sys_color_dynamic_dark_primary"
+							android:fillType="evenOdd"
+							android:fillAlpha="0"
+							android:strokeWidth="1"
+							android:pathData="
+								M 118 102 Q 108 82 123 72 Q 133 77 128 97 Z
+								M 202 102 Q 212 82 197 72 Q 187 77 192 97 Z
+								M 160 92 C 195.9 92 225 121.1 225 167 C 225 212.9 195.9 242 160 242 C 124.1 242 95 212.9 95 167 C 95 121.1 124.1 92 160 92 Z
+								M 160 137 C 181 137 198 158.2 198 182 C 198 205.8 181 227 160 227 C 139 227 122 205.8 122 182 C 122 158.2 139 137 160 137 Z
+							" />
+						<!-- Belly (white overlay) -->
+						<path
+							android:name="belly"
+							android:fillColor="@color/m3_sys_color_dynamic_dark_on_primary"
+							android:fillAlpha="0"
+							android:pathData="
+								M 160 137 C 181 137 198 158.2 198 182 C 198 205.8 181 227 160 227 C 139 227 122 205.8 122 182 C 122 158.2 139 137 160 137 Z
+							" />
+						<!-- Eyes -->
+						<path
+							android:name="eyes"
+							android:fillColor="@color/m3_sys_color_dynamic_dark_on_primary"
+							android:fillAlpha="0"
+							android:pathData="
+								M 140 152 C 144.4 152 148 155.6 148 160 C 148 164.4 144.4 168 140 168 C 135.6 168 132 164.4 132 160 C 132 155.6 135.6 152 140 152 Z
+								M 180 152 C 184.4 152 188 155.6 188 160 C 188 164.4 184.4 168 180 168 C 175.6 168 172 164.4 172 160 C 172 155.6 175.6 152 180 152 Z
+							" />
+						<!-- Nose -->
+						<path
+							android:name="nose"
+							android:fillColor="@color/m3_sys_color_dynamic_dark_on_primary"
+							android:fillAlpha="0"
+							android:pathData="
+								M 160 170 L 155 177 L 165 177 Z
+							" />
+					</group>
+				</group>
+			</group>
+		</vector>
+	</aapt:attr>
+	<target android:name="circle">
+		<aapt:attr name="android:animation">
+			<set>
+				<objectAnimator
+					android:propertyName="pathData"
+					android:startOffset="200"
+					android:duration="300"
+					android:valueFrom="M 160 110 C 146.744 110 134.018 115.271 124.645 124.645 C 115.271 134.018 110 146.744 110 160 C 110 173.256 115.271 185.982 124.645 195.355 C 134.018 204.729 146.744 210 160 210 C 173.256 210 185.982 204.729 195.355 195.355 C 204.729 185.982 210 173.256 210 160 C 210 146.744 204.729 134.018 195.355 124.645 C 185.982 115.271 173.256 110 160 110 Z"
+					android:valueTo="M 160 60 C 133.489 60 108.036 70.543 89.289 89.289 C 70.543 108.036 60 133.489 60 160 C 60 186.511 70.543 211.964 89.289 230.711 C 108.036 249.457 133.489 260 160 260 C 186.511 260 211.964 249.457 230.711 230.711 C 249.457 211.964 260 186.511 260 160 C 260 133.489 249.457 108.036 230.711 89.289 C 211.964 70.543 186.511 60 160 60 Z"
+					android:valueType="pathType"
+					android:interpolator="@android:anim/overshoot_interpolator" />
+				<objectAnimator
+					android:propertyName="fillAlpha"
+					android:startOffset="200"
+					android:duration="100"
+					android:valueFrom="0"
+					android:valueTo="1"
+					android:valueType="floatType"
+					android:interpolator="@android:interpolator/fast_out_slow_in" />
+			</set>
+		</aapt:attr>
+	</target>
+	<target android:name="totoro_group">
+		<aapt:attr name="android:animation">
+			<set>
+				<objectAnimator
+					android:startOffset="200"
+					android:duration="300"
+					android:propertyName="translateY"
+					android:valueFrom="160"
+					android:valueTo="0"
+					android:interpolator="@android:interpolator/fast_out_slow_in" />
+				<objectAnimator
+					android:startOffset="200"
+					android:duration="300"
+					android:propertyName="scaleY"
+					android:valueFrom="0.5"
+					android:valueTo="1"
+					android:interpolator="@android:interpolator/fast_out_slow_in" />
+			</set>
+		</aapt:attr>
+	</target>
+	<target android:name="totoro">
+		<aapt:attr name="android:animation">
+			<set>
+				<objectAnimator
+					android:propertyName="fillAlpha"
+					android:startOffset="200"
+					android:duration="100"
+					android:valueFrom="0"
+					android:valueTo="1"
+					android:valueType="floatType"
+					android:interpolator="@android:interpolator/fast_out_slow_in" />
+			</set>
+		</aapt:attr>
+	</target>
+	<target android:name="belly">
+		<aapt:attr name="android:animation">
+			<set>
+				<objectAnimator
+					android:propertyName="fillAlpha"
+					android:startOffset="200"
+					android:duration="100"
+					android:valueFrom="0"
+					android:valueTo="1"
+					android:valueType="floatType"
+					android:interpolator="@android:interpolator/fast_out_slow_in" />
+			</set>
+		</aapt:attr>
+	</target>
+	<target android:name="eyes">
+		<aapt:attr name="android:animation">
+			<set>
+				<objectAnimator
+					android:propertyName="fillAlpha"
+					android:startOffset="200"
+					android:duration="100"
+					android:valueFrom="0"
+					android:valueTo="1"
+					android:valueType="floatType"
+					android:interpolator="@android:interpolator/fast_out_slow_in" />
+			</set>
+		</aapt:attr>
+	</target>
+	<target android:name="nose">
+		<aapt:attr name="android:animation">
+			<set>
+				<objectAnimator
+					android:propertyName="fillAlpha"
+					android:startOffset="200"
+					android:duration="100"
+					android:valueFrom="0"
+					android:valueTo="1"
+					android:valueType="floatType"
+					android:interpolator="@android:interpolator/fast_out_slow_in" />
+			</set>
+		</aapt:attr>
+	</target>
+	<target android:name="fg">
+		<aapt:attr name="android:animation">
+			<set>
+				<objectAnimator
+					android:propertyName="scaleX"
+					android:startOffset="200"
+					android:duration="300"
+					android:valueFrom="0.5"
+					android:valueTo="1"
+					android:valueType="floatType"
+					android:interpolator="@android:anim/overshoot_interpolator" />
+				<objectAnimator
+					android:propertyName="scaleY"
+					android:startOffset="200"
+					android:duration="300"
+					android:valueFrom="0.5"
+					android:valueTo="1"
+					android:valueType="floatType"
+					android:interpolator="@android:anim/overshoot_interpolator" />
+			</set>
+		</aapt:attr>
+	</target>
+</animated-vector>

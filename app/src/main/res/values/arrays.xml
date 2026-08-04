@@ -1,0 +1,454 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<string-array name="themes" translatable="false">
+		<item>@string/follow_system</item>
+		<item>@string/light</item>
+		<item>@string/dark</item>
+	</string-array>
+	<string-array name="zoom_modes" translatable="false">
+		<item>@string/zoom_mode_fit_center</item>
+		<item>@string/zoom_mode_fit_height</item>
+		<item>@string/zoom_mode_fit_width</item>
+		<item>@string/zoom_mode_keep_start</item>
+	</string-array>
+	<string-array name="track_sources" translatable="false">
+		<item>@string/favourites</item>
+		<item>@string/history</item>
+	</string-array>
+	<string-array name="list_modes" translatable="false">
+		<item>@string/list</item>
+		<item>@string/detailed_list</item>
+		<item>@string/grid</item>
+		<item>@string/compact_grid</item>
+	</string-array>
+	<string-array name="screenshots_policy" translatable="false">
+		<item>@string/screenshots_allow</item>
+		<item>@string/screenshots_block_nsfw</item>
+		<item>@string/screenshots_block_incognito</item>
+		<item>@string/screenshots_block_all</item>
+	</string-array>
+	<string-array name="network_policy" translatable="false">
+		<item>@string/always</item>
+		<item>@string/only_using_wifi</item>
+		<item>@string/never</item>
+	</string-array>
+	<string-array name="doh_providers" translatable="false">
+		<item>@string/disabled</item>
+		<item>@string/custom</item>
+		<item>Google</item>
+		<item>CloudFlare</item>
+		<item>AdGuard</item>
+		<item>0ms</item>
+	</string-array>
+	<string-array name="image_proxies" translatable="false">
+		<item>@string/none</item>
+		<item>wsrv.nl</item>
+		<item>0ms.dev</item>
+	</string-array>
+	<string-array name="reader_modes" translatable="false">
+		<item>@string/standard</item>
+		<item>@string/right_to_left</item>
+		<item>@string/vertical</item>
+		<item>@string/webtoon</item>
+	</string-array>
+	<string-array name="scrobbling_statuses" translatable="false">
+		<item>@string/status_planned</item>
+		<item>@string/status_reading</item>
+		<item>@string/status_re_reading</item>
+		<item>@string/status_completed</item>
+		<item>@string/status_on_hold</item>
+		<item>@string/status_dropped</item>
+	</string-array>
+	<string-array name="proxy_types" translatable="false">
+		<item>@string/disabled</item>
+		<item>HTTP</item>
+		<item>SOCKS (v4/v5)</item>
+	</string-array>
+	<string-array name="reader_backgrounds" translatable="false">
+		<item>@string/reader_background_theme</item>
+		<item>@string/color_light</item>
+		<item>@string/color_dark</item>
+		<item>@string/color_white</item>
+		<item>@string/color_black</item>
+		<item>@string/automatic</item>
+	</string-array>
+	<string-array name="video_backgrounds" translatable="false">
+		<item>@string/system_default</item>
+		<item>@string/color_light</item>
+		<item>@string/color_dark</item>
+		<item>@string/color_white</item>
+		<item>@string/color_black</item>
+	</string-array>
+	<string-array name="video_decoder_modes" translatable="false">
+		<item>@string/video_decoder_hardware</item>
+		<item>@string/video_decoder_software</item>
+	</string-array>
+	<string-array name="video_renderer_modes" translatable="false">
+		<item>@string/video_renderer_auto</item>
+		<item>@string/video_renderer_gpu</item>
+		<item>@string/video_renderer_gpu_next</item>
+		<item>@string/video_renderer_mediacodec_embed</item>
+	</string-array>
+	<string-array name="video_super_resolution_modes" translatable="false">
+		<item>@string/video_super_resolution_off</item>
+		<item>@string/video_super_resolution_quality</item>
+		<item>@string/video_super_resolution_balanced</item>
+		<item>@string/video_super_resolution_performance</item>
+		<item>@string/video_super_resolution_advanced</item>
+	</string-array>
+	<string-array name="video_super_resolution_shaders" translatable="false">
+		<item>@string/video_super_resolution_mode_a</item>
+		<item>@string/video_super_resolution_mode_b</item>
+		<item>@string/video_super_resolution_mode_c</item>
+		<item>@string/video_super_resolution_mode_aa</item>
+		<item>@string/video_super_resolution_mode_bb</item>
+		<item>@string/video_super_resolution_mode_ca</item>
+	</string-array>
+	<string-array name="reader_animation" translatable="false">
+		<item>@string/disabled</item>
+		<item>@string/system_default</item>
+		<item>@string/advanced</item>
+		<item>@string/novel_page_turn_simulation</item>
+	</string-array>
+	<string-array name="backup_frequency" translatable="false">
+		<item>@string/frequency_every_6_hours</item>
+		<item>@string/frequency_every_day</item>
+		<item>@string/frequency_every_2_days</item>
+		<item>@string/frequency_once_per_week</item>
+		<item>@string/frequency_twice_per_month</item>
+		<item>@string/frequency_once_per_month</item>
+	</string-array>
+	<string-array name="details_tabs" translatable="false">
+		<item>@string/last_used</item>
+		<item>@string/chapters</item>
+		<item>@string/pages</item>
+		<item>@string/bookmarks</item>
+	</string-array>
+	<string-array name="download_formats" translatable="false">
+		<item>@string/automatic</item>
+		<item>@string/single_cbz_file</item>
+		<item>@string/multiple_cbz_files</item>
+	</string-array>
+	<string-array name="tracker_frequency" translatable="false">
+		<item>@string/manual</item>
+		<item>@string/less_frequently</item>
+		<item>@string/system_default</item>
+		<item>@string/more_frequently</item>
+	</string-array>
+	<string-array name="reader_crop" translatable="false">
+		<item>@string/pages</item>
+		<item>@string/webtoon</item>
+	</string-array>
+	<string-array name="progress_indicators" translatable="false">
+		<item>@string/disabled</item>
+		<item>@string/percent_read</item>
+		<item>@string/percent_left</item>
+		<item>@string/chapters_read</item>
+		<item>@string/chapters_left</item>
+	</string-array>
+	<string-array name="tracker_download_strategies" translatable="false">
+		<item>@string/never</item>
+		<item>@string/manga_with_downloaded_chapters</item>
+	</string-array>
+	<string-array name="metered_network_options" translatable="false">
+		<item>@string/allow_always</item>
+		<item>@string/ask_every_time</item>
+		<item>@string/dont_allow</item>
+	</string-array>
+	<string-array name="screen_orientations" translatable="false">
+		<item>@string/system_default</item>
+		<item>@string/automatic</item>
+		<item>@string/portrait</item>
+		<item>@string/landscape</item>
+	</string-array>
+	<string-array name="reader_controls" translatable="false">
+		<item>@string/chapters_and_pages</item>
+		<item>@string/screen_orientation</item>
+		<item>@string/save_page</item>
+		<item>@string/automatic_scroll</item>
+		<item>@string/bookmark_add</item>
+		<item>@string/novel_translate</item>
+		<item>@string/download</item>
+	</string-array>
+	<string-array name="reader_translation_pipeline_modes" translatable="false">
+		<item>@string/reader_translation_pipeline_mode_two_stage</item>
+		<item>@string/reader_translation_pipeline_mode_end_to_end_api</item>
+	</string-array>
+	<string-array name="values_reader_translation_pipeline_modes" translatable="false">
+		<item>TWO_STAGE</item>
+		<item>END_TO_END_API</item>
+	</string-array>
+	<string-array name="reader_translation_modes" translatable="false">
+		<item>@string/reader_translation_mode_local_only</item>
+		<item>@string/reader_translation_mode_api_only</item>
+	</string-array>
+	<string-array name="reader_translation_ocr_engines" translatable="false">
+		<item>@string/reader_translation_ocr_engine_mlkit</item>
+		<item>@string/reader_translation_ocr_engine_paddle</item>
+	</string-array>
+	<string-array name="reader_translation_ocr_pipeline_strategies" translatable="false">
+		<item>@string/reader_translation_ocr_pipeline_page_text_first</item>
+		<item>@string/reader_translation_ocr_pipeline_bubble_detector_first</item>
+		<item>@string/reader_translation_ocr_pipeline_hybrid</item>
+	</string-array>
+	<string-array name="reader_translation_tuning_levels" translatable="false">
+		<item>@string/reader_translation_tuning_strict</item>
+		<item>@string/reader_translation_tuning_balanced</item>
+		<item>@string/reader_translation_tuning_relaxed</item>
+	</string-array>
+	<string-array name="reader_translation_render_styles" translatable="false">
+		<item>@string/reader_translation_render_style_replace</item>
+		<item>@string/reader_translation_render_style_compact_overlay</item>
+	</string-array>
+	<string-array name="values_reader_translation_modes" translatable="false">
+		<item>LOCAL_ONLY</item>
+		<item>API_ONLY</item>
+	</string-array>
+	<string-array name="values_reader_translation_ocr_engines" translatable="false">
+		<item>MLKIT</item>
+		<item>PADDLE</item>
+	</string-array>
+	<string-array name="values_reader_translation_ocr_pipeline_strategies" translatable="false">
+		<item>PAGE_TEXT_FIRST</item>
+		<item>BUBBLE_DETECTOR_FIRST</item>
+		<item>HYBRID</item>
+	</string-array>
+	<string-array name="values_reader_translation_tuning_levels" translatable="false">
+		<item>STRICT</item>
+		<item>BALANCED</item>
+		<item>RELAXED</item>
+	</string-array>
+	<string-array name="values_reader_translation_render_styles" translatable="false">
+		<item>REPLACE</item>
+		<item>COMPACT_OVERLAY</item>
+	</string-array>
+	<string-array name="reader_translation_source_languages" translatable="false">
+		<item>Automatic</item>
+		<item>Arabic</item>
+		<item>Bangla</item>
+		<item>Bulgarian</item>
+		<item>Catalan</item>
+		<item>Chinese (Simplified)</item>
+		<item>Czech</item>
+		<item>Danish</item>
+		<item>German</item>
+		<item>Greek</item>
+		<item>English</item>
+		<item>Spanish</item>
+		<item>Finnish</item>
+		<item>French</item>
+		<item>Hindi</item>
+		<item>Croatian</item>
+		<item>Italian</item>
+		<item>Indonesian</item>
+		<item>Japanese</item>
+		<item>Korean</item>
+		<item>Thai</item>
+		<item>Dutch</item>
+		<item>Polish</item>
+		<item>Portuguese</item>
+		<item>Romanian</item>
+		<item>Russian</item>
+		<item>Slovak</item>
+		<item>Swedish</item>
+		<item>Tagalog</item>
+		<item>Turkish</item>
+		<item>Ukrainian</item>
+		<item>Vietnamese</item>
+	</string-array>
+	<string-array name="values_reader_translation_source_languages" translatable="false">
+		<item>auto</item>
+		<item>ar</item>
+		<item>bn</item>
+		<item>bg</item>
+		<item>ca</item>
+		<item>zh</item>
+		<item>cs</item>
+		<item>da</item>
+		<item>de</item>
+		<item>el</item>
+		<item>en</item>
+		<item>es</item>
+		<item>fi</item>
+		<item>fr</item>
+		<item>hi</item>
+		<item>hr</item>
+		<item>it</item>
+		<item>id</item>
+		<item>ja</item>
+		<item>ko</item>
+		<item>th</item>
+		<item>nl</item>
+		<item>pl</item>
+		<item>pt</item>
+		<item>ro</item>
+		<item>ru</item>
+		<item>sk</item>
+		<item>sv</item>
+		<item>tl</item>
+		<item>tr</item>
+		<item>uk</item>
+		<item>vi</item>
+	</string-array>
+	<string-array name="reader_translation_target_languages" translatable="false">
+		<item>Arabic</item>
+		<item>Bangla</item>
+		<item>Bulgarian</item>
+		<item>Catalan</item>
+		<item>Chinese (Simplified)</item>
+		<item>Czech</item>
+		<item>Danish</item>
+		<item>German</item>
+		<item>Greek</item>
+		<item>English</item>
+		<item>Spanish</item>
+		<item>Finnish</item>
+		<item>French</item>
+		<item>Hindi</item>
+		<item>Croatian</item>
+		<item>Italian</item>
+		<item>Indonesian</item>
+		<item>Japanese</item>
+		<item>Korean</item>
+		<item>Thai</item>
+		<item>Dutch</item>
+		<item>Polish</item>
+		<item>Portuguese</item>
+		<item>Romanian</item>
+		<item>Russian</item>
+		<item>Slovak</item>
+		<item>Swedish</item>
+		<item>Tagalog</item>
+		<item>Turkish</item>
+		<item>Ukrainian</item>
+		<item>Vietnamese</item>
+	</string-array>
+	<string-array name="values_reader_translation_target_languages" translatable="false">
+		<item>ar</item>
+		<item>bn</item>
+		<item>bg</item>
+		<item>ca</item>
+		<item>zh</item>
+		<item>cs</item>
+		<item>da</item>
+		<item>de</item>
+		<item>el</item>
+		<item>en</item>
+		<item>es</item>
+		<item>fi</item>
+		<item>fr</item>
+		<item>hi</item>
+		<item>hr</item>
+		<item>it</item>
+		<item>id</item>
+		<item>ja</item>
+		<item>ko</item>
+		<item>th</item>
+		<item>nl</item>
+		<item>pl</item>
+		<item>pt</item>
+		<item>ro</item>
+		<item>ru</item>
+		<item>sk</item>
+		<item>sv</item>
+		<item>tl</item>
+		<item>tr</item>
+		<item>uk</item>
+		<item>vi</item>
+	</string-array>
+	<string-array name="list_badges" translatable="false">
+		<item>@string/favourites</item>
+		<item>@string/saved_manga</item>
+	</string-array>
+	<string-array name="badge_options" translatable="false">
+		<item>@string/badge_tracker</item>
+		<item>@string/badge_score</item>
+		<item>@string/badge_projection_count</item>
+		<item>@string/badge_favorite</item>
+		<item>@string/badge_saved</item>
+		<item>@string/badge_pin</item>
+		<item>@string/badge_source_icon</item>
+		<item>@string/badge_language</item>
+	</string-array>
+	<string-array name="values_badge_options" translatable="false">
+		<item>tracker</item>
+		<item>score</item>
+		<item>projection_count</item>
+		<item>favorite</item>
+		<item>saved</item>
+		<item>pin</item>
+		<item>source</item>
+		<item>language</item>
+	</string-array>
+	<string-array name="bottom_right_badge_options" translatable="false">
+		<item>@string/badge_nsfw</item>
+	</string-array>
+	<string-array name="values_bottom_right_badge_options" translatable="false">
+		<item>nsfw</item>
+	</string-array>
+	<string-array name="incognito_nsfw_options" translatable="false">
+		<item>@string/enable</item>
+		<item>@string/ask_every_time</item>
+		<item>@string/disable</item>
+	</string-array>
+	<string-array name="reader_super_resolution_engines" translatable="false">
+		<item>Anime4K (Fast Shaders)</item>
+		<item>RealCUGAN / RealESRGAN (NCNN)</item>
+	</string-array>
+	<string-array name="values_reader_super_resolution_engines" translatable="false">
+		<item>ANIME4K</item>
+		<item>NCNN</item>
+	</string-array>
+	<string-array name="reader_super_resolution_models" translatable="false">
+		<item>@string/reader_super_resolution_model_se</item>
+		<item>@string/reader_super_resolution_model_pro</item>
+		<item>@string/reader_super_resolution_model_nose</item>
+	</string-array>
+	<string-array name="values_reader_super_resolution_models" translatable="false">
+		<item>SE</item>
+		<item>PRO</item>
+		<item>NOSE</item>
+	</string-array>
+	<string-array name="values_reader_super_resolution_anime4k_modes" translatable="false">
+		<item>ANIME4K_A</item>
+		<item>ANIME4K_B</item>
+		<item>ANIME4K_C</item>
+		<item>ANIME4K_AA</item>
+		<item>ANIME4K_BB</item>
+		<item>ANIME4K_CA</item>
+	</string-array>
+	<string-array name="reader_super_resolution_noise_levels" translatable="false">
+		<item>@string/reader_super_resolution_noise_n1</item>
+		<item>@string/reader_super_resolution_noise_0</item>
+		<item>@string/reader_super_resolution_noise_1</item>
+		<item>@string/reader_super_resolution_noise_2</item>
+		<item>@string/reader_super_resolution_noise_3</item>
+	</string-array>
+	<string-array name="values_reader_super_resolution_noise_levels" translatable="false">
+		<item>-1</item>
+		<item>0</item>
+		<item>1</item>
+		<item>2</item>
+		<item>3</item>
+	</string-array>
+	<string-array name="reader_super_resolution_cache_limits" translatable="false">
+		<item>@string/reader_super_resolution_cache_limit_256</item>
+		<item>@string/reader_super_resolution_cache_limit_512</item>
+		<item>@string/reader_super_resolution_cache_limit_1024</item>
+		<item>@string/reader_super_resolution_cache_limit_2048</item>
+		<item>@string/reader_super_resolution_cache_limit_unlimited</item>
+	</string-array>
+	<string-array name="values_reader_super_resolution_cache_limits" translatable="false">
+		<item>256</item>
+		<item>512</item>
+		<item>1024</item>
+		<item>2048</item>
+		<item>-1</item>
+	</string-array>
+	<string-array name="loading_circle_styles" translatable="false">
+		<item>@string/loading_circle_style_thick_straight</item>
+		<item>@string/loading_circle_style_thick_wavy</item>
+		<item>@string/loading_circle_style_thin_straight</item>
+		<item>@string/loading_circle_style_thin_wavy</item>
+	</string-array>
+</resources>
