@@ -18,12 +18,19 @@ import org.skepsun.kototoro.parsers.model.ContentTag
 import org.skepsun.kototoro.parsers.util.longHashCode
 import java.io.File
 
+/**
+ * 构建 PDF chapter/page URL。
+ *
+ * 【V7】不再使用 [Uri.Builder]（它会把 pdf:///path 生成成 pdf:/path 单斜杠格式），
+ * 改用字符串拼接 + [Uri.encode]（保留 "/" 不编码）。
+ */
 private fun buildPdfUrl(path: String, fragment: String? = null): String {
-	val builder = Uri.Builder().scheme(URI_SCHEME_PDF).path(path)
-	if (fragment != null) {
-		builder.fragment(fragment)
+	val encodedPath = Uri.encode(path, "/")
+	return if (fragment != null) {
+		"$URI_SCHEME_PDF://$encodedPath#$fragment"
+	} else {
+		"$URI_SCHEME_PDF://$encodedPath"
 	}
-	return builder.build().toString()
 }
 
 /**
@@ -294,16 +301,21 @@ class LocalPdfParser(
 		 */
 		fun parsePageUri(uri: Uri): Pair<File, Int>? {
 			val raw = uri.toString()
+			// 【V7】同时支持 pdf:// 和 pdf:/ 前缀
+			// （Uri.Builder 生成的可能只有一个斜杠 pdf:/path）
 			val isPdf = uri.scheme == URI_SCHEME_PDF ||
 				raw.startsWith("pdf://", ignoreCase = true) ||
-				(raw.endsWith(".pdf", ignoreCase = true) && raw.contains("pdf://", ignoreCase = true))
+				raw.startsWith("pdf:/", ignoreCase = true) ||
+				(raw.endsWith(".pdf", ignoreCase = true) && raw.contains("pdf:/", ignoreCase = true))
 			if (!isPdf) return null
 
 			// 1) 从原始字符串提取路径（手写字符串操作，不依赖 Uri.path）
+			//    兼容 pdf://path、pdf:/path、pdf:///path
 			val withoutFrag = raw.substringBefore('#')
 			val withoutScheme = when {
 				withoutFrag.startsWith("pdf://", ignoreCase = true) -> withoutFrag.substring(6)
-				withoutFrag.startsWith("pdf", ignoreCase = true) -> withoutFrag.substring(3).trimStart(':')
+				withoutFrag.startsWith("pdf:/", ignoreCase = true) -> withoutFrag.substring(5)
+				withoutFrag.startsWith("pdf:", ignoreCase = true) -> withoutFrag.substring(4)
 				else -> null
 			}
 			val trimmed = withoutScheme?.trimStart('/')

@@ -389,20 +389,20 @@ class LocalContentParser {
 }
 
 	suspend fun getPages(chapter: ContentChapter): List<ContentPage> = runInterruptible(Dispatchers.IO) {
-		// 【V6 终极修复】完全手写字符串判断 + URL 百分号解码。
-		// Uri.Builder.path() 会把特殊字符编码为 %XX，提取后必须解码回来。
+		// 【V7】同时支持 pdf:// 和 pdf:/ 前缀
 		val url: String = chapter.url
 		val pdfPrefix = "pdf://"
+		val pdfPrefixSingle = "pdf:/"
 		if (url.startsWith(pdfPrefix, ignoreCase = true) ||
-			(url.endsWith(".pdf", ignoreCase = true) && url.contains(pdfPrefix, ignoreCase = true))
+			url.startsWith(pdfPrefixSingle, ignoreCase = true) ||
+			(url.endsWith(".pdf", ignoreCase = true) && url.contains(pdfPrefixSingle, ignoreCase = true))
 		) {
 			android.util.Log.d("LocalMangaParser", "V6 PDF interception: url=$url")
 			val withoutFrag = url.substringBefore('#')
 			val withoutScheme = when {
-				withoutFrag.startsWith(pdfPrefix, ignoreCase = true) ->
-					withoutFrag.substring(pdfPrefix.length)
-				withoutFrag.startsWith("pdf", ignoreCase = true) ->
-					withoutFrag.substring(3).trimStart(':')
+				withoutFrag.startsWith("pdf://", ignoreCase = true) -> withoutFrag.substring(6)
+				withoutFrag.startsWith("pdf:/", ignoreCase = true) -> withoutFrag.substring(5)
+				withoutFrag.startsWith("pdf:", ignoreCase = true) -> withoutFrag.substring(4)
 				else -> null
 			}
 			val trimmed = withoutScheme?.trimStart('/')
@@ -425,13 +425,10 @@ class LocalContentParser {
 			val pageCount = parser.pageCount()
 			android.util.Log.d("LocalMangaParser", "V6 PDF: pageCount=$pageCount")
 			if (pageCount <= 0) return@runInterruptible emptyList()
+			// 【V7】不用 Uri.Builder，改用字符串拼接
+			val encodedPath = android.net.Uri.encode(pdfPath, "/")
 			return@runInterruptible (0 until pageCount).map { i ->
-				val pageUrl = android.net.Uri.Builder()
-					.scheme("pdf")
-					.path(pdfPath)
-					.fragment("page/$i")
-					.build()
-					.toString()
+				val pageUrl = "pdf://$encodedPath#page/$i"
 				ContentPage(
 					id = "$pdfPath#$i".hashCode().toLong().let { if (it < 0) -it else it },
 					url = pageUrl,

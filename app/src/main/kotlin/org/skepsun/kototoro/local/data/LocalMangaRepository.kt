@@ -167,21 +167,23 @@ class LocalMangaRepository @Inject constructor(
 		// 【V6 终极修复】加上 URL 百分号解码！
 		// Uri.Builder.path() 会把路径里的特殊字符（日文、空格等）编码成 %XX，
 		// 提取路径后必须用 URLDecoder.decode 解码回来，否则 File.exists() 永远返回 false。
+		// 【V7】同时支持 pdf:// 和 pdf:/ 前缀（Uri.Builder 可能只生成一个斜杠）
 		val url: String = chapter.url
 		val pdfPrefix = "pdf://"
+		val pdfPrefixSingle = "pdf:/"
 		val isPdf = url.startsWith(pdfPrefix, ignoreCase = true) ||
-			(url.endsWith(".pdf", ignoreCase = true) && url.contains(pdfPrefix, ignoreCase = true))
+			url.startsWith(pdfPrefixSingle, ignoreCase = true) ||
+			(url.endsWith(".pdf", ignoreCase = true) && url.contains("pdf:/", ignoreCase = true))
 
 		android.util.Log.d("LocalMangaRepository", "V6 getPages: url=$url isPdf=$isPdf title=${chapter.title}")
 
 		if (isPdf) {
-			// 手动提取路径：去掉 pdf:// 前缀，去掉 # 之后的 fragment，再去多余的 '/'
+			// 手动提取路径：去掉 pdf:// 或 pdf:/ 前缀，去掉 # 之后的 fragment，再去多余的 '/'
 			val withoutFrag = url.substringBefore('#')
 			val withoutScheme = when {
-				withoutFrag.startsWith(pdfPrefix, ignoreCase = true) ->
-					withoutFrag.substring(pdfPrefix.length)
-				withoutFrag.startsWith("pdf", ignoreCase = true) ->
-					withoutFrag.substring(3).trimStart(':')
+				withoutFrag.startsWith("pdf://", ignoreCase = true) -> withoutFrag.substring(6)
+				withoutFrag.startsWith("pdf:/", ignoreCase = true) -> withoutFrag.substring(5)
+				withoutFrag.startsWith("pdf:", ignoreCase = true) -> withoutFrag.substring(4)
 				else -> null
 			}
 			val trimmed = withoutScheme?.trimStart('/')
@@ -204,13 +206,11 @@ class LocalMangaRepository @Inject constructor(
 			val pageCount = parser.pageCount()
 			android.util.Log.d("LocalMangaRepository", "V6 PDF: pageCount=$pageCount")
 			if (pageCount <= 0) return emptyList()
+			// 【V7】不用 Uri.Builder（它会把 pdf:/path 生成成 pdf:/path 只有一个斜杠），
+			// 改用字符串拼接 + Uri.encode 编码路径中的特殊字符
+			val encodedPath = android.net.Uri.encode(pdfPath, "/")
 			return (0 until pageCount).map { i ->
-				val pageUrl = android.net.Uri.Builder()
-					.scheme("pdf")
-					.path(pdfPath)
-					.fragment("page/$i")
-					.build()
-					.toString()
+				val pageUrl = "pdf://$encodedPath#page/$i"
 				ContentPage(
 					id = "$pdfPath#$i".hashCode().toLong().let { if (it < 0) -it else it },
 					url = pageUrl,
