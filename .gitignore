@@ -41,3 +41,8 @@ Thumbs.db
 # Generated APKs (built in CI, not committed)
 *.apk
 *.aab
+
+# Test PDF files (local content, not for git)
+*.pdf
+TestPdf*.java
+TestPdf*.class
