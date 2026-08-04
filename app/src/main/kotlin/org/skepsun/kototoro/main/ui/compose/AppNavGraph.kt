@@ -1456,6 +1456,12 @@ internal fun LocalTopLevelRouteContent(
                                 .filterIsInstance<org.skepsun.kototoro.list.ui.model.ContentListModel>()
                             if (items.isNotEmpty()) {
                                 navigateToDetailsWithContent(items.random().manga, null)
+                            } else {
+                                android.widget.Toast.makeText(
+                                    activity,
+                                    org.skepsun.kototoro.R.string.local_list_empty,
+                                    android.widget.Toast.LENGTH_SHORT,
+                                ).show()
                             }
                         },
                     )

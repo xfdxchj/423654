@@ -18,6 +18,7 @@ import org.skepsun.kototoro.core.parser.ContentRepository
 import org.skepsun.kototoro.parsers.model.NovelChapterContent
 import org.skepsun.kototoro.core.prefs.AppSettings
 import org.skepsun.kototoro.core.util.AlphanumComparator
+import org.skepsun.kototoro.core.util.ext.URI_SCHEME_PDF
 import org.skepsun.kototoro.core.util.ext.deleteAwait
 import org.skepsun.kototoro.core.util.ext.printStackTraceDebug
 import org.skepsun.kototoro.core.util.ext.takeIfWriteable
@@ -178,17 +179,24 @@ class LocalMangaRepository @Inject constructor(
 		}
 
 		// PDF 章节：使用 pdf:// 协议，按页拆分成 ContentPage 列表
-		if (chapter.url.startsWith("pdf://")) {
+		if (chapter.url.startsWith("$URI_SCHEME_PDF://")) {
 			android.util.Log.d("LocalMangaRepository", "PDF chapter detected: ${chapter.url}")
-			val pdfPath = chapter.url.removePrefix("pdf://")
+			val uri = android.net.Uri.parse(chapter.url)
+			val pdfPath = uri.path ?: return emptyList()
 			val pdfFile = java.io.File(pdfPath)
 			val parser = org.skepsun.kototoro.local.pdf.LocalPdfParser(pdfFile)
 			val pageCount = parser.pageCount()
 			if (pageCount <= 0) return emptyList()
 			return (0 until pageCount).map { i ->
+				val pageUrl = android.net.Uri.Builder()
+					.scheme(URI_SCHEME_PDF)
+					.path(pdfPath)
+					.fragment("page/$i")
+					.build()
+					.toString()
 				ContentPage(
 					id = "$pdfPath#$i".longHashCode(),
-					url = "pdf://$pdfPath#page/$i",
+					url = pageUrl,
 					preview = null,
 					source = LocalMangaSource,
 				)

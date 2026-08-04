@@ -16,6 +16,14 @@ import org.skepsun.kototoro.parsers.model.ContentTag
 import org.skepsun.kototoro.parsers.util.longHashCode
 import java.io.File
 
+private fun buildPdfUrl(path: String, fragment: String? = null): String {
+	val builder = Uri.Builder().scheme(URI_SCHEME_PDF).path(path)
+	if (fragment != null) {
+		builder.fragment(fragment)
+	}
+	return builder.build().toString()
+}
+
 /**
  * 本地 PDF 漫画解析器。基于 Android 原生 [PdfRenderer]（API 21+），无需第三方依赖。
  *
@@ -85,12 +93,14 @@ class LocalPdfParser(
 			}
 		}.filter { it.isNotBlank() && it != title } // 去掉空白和标题重复
 
+		val pdfPath = pdfFile.absolutePath
+		val chapterUrl = buildPdfUrl(pdfPath)
 		val chapter = ContentChapter(
-			id = "${pdfFile.absolutePath}:0".longHashCode(),
+			id = "${pdfPath}:0".longHashCode(),
 			title = title,
 			number = 1f,
 			volume = 0,
-			url = "$URI_SCHEME_PDF://${pdfFile.absolutePath}",
+			url = chapterUrl,
 			scanlator = null,
 			uploadDate = pdfFile.lastModified(),
 			branch = null,
@@ -100,7 +110,7 @@ class LocalPdfParser(
 			id = pdfFile.absolutePath.longHashCode(),
 			title = title,
 			altTitles = searchableTexts.toSet(),
-			url = "$URI_SCHEME_PDF://${pdfFile.absolutePath}",
+			url = chapterUrl,
 			publicUrl = pdfFile.toUri().toString(),
 			rating = -1f,
 			contentRating = null,
@@ -117,9 +127,14 @@ class LocalPdfParser(
 
 	/** 返回 PDF 页数。文件不可读或非 PDF 时返回 0。 */
 	fun pageCount(): Int {
-		if (!pdfFile.isFile || !pdfFile.canRead()) return 0
+		if (!pdfFile.isFile || !pdfFile.canRead()) {
+			android.util.Log.w("LocalPdfParser", "pageCount: file not readable: $pdfFile")
+			return 0
+		}
 		return runCatching {
 			openRenderer().use { it.pageCount }
+		}.onFailure {
+			android.util.Log.e("LocalPdfParser", "pageCount failed for $pdfFile", it)
 		}.getOrDefault(0)
 	}
 
@@ -129,10 +144,16 @@ class LocalPdfParser(
 	 * @param targetWidth 目标宽度（像素），按比例缩放，0 表示按原始尺寸
 	 */
 	fun renderPage(pageIndex: Int, targetWidth: Int = 1080): Bitmap? {
-		if (!pdfFile.isFile || !pdfFile.canRead()) return null
+		if (!pdfFile.isFile || !pdfFile.canRead()) {
+			android.util.Log.w("LocalPdfParser", "renderPage: file not readable: $pdfFile")
+			return null
+		}
 		return runCatching {
 			openRenderer().use { renderer ->
-				if (pageIndex < 0 || pageIndex >= renderer.pageCount) return@use null
+				if (pageIndex < 0 || pageIndex >= renderer.pageCount) {
+					android.util.Log.w("LocalPdfParser", "renderPage: pageIndex $pageIndex out of range [0, ${renderer.pageCount})")
+					return@use null
+				}
 				renderer.openPage(pageIndex).use { page ->
 					val width = if (targetWidth > 0) targetWidth else page.width
 					val scale = width.toFloat() / page.width.toFloat()
@@ -143,6 +164,8 @@ class LocalPdfParser(
 					bitmap
 				}
 			}
+		}.onFailure {
+			android.util.Log.e("LocalPdfParser", "renderPage failed: page=$pageIndex, file=$pdfFile", it)
 		}.getOrNull()
 	}
 
@@ -265,7 +288,9 @@ class LocalPdfParser(
 		/** 从 `pdf://<path>#page/<index>` URI 解析出 PDF 文件和页码。 */
 		fun parsePageUri(uri: Uri): Pair<File, Int>? {
 			if (uri.scheme != URI_SCHEME_PDF) return null
-			val path = uri.schemeSpecificPart
+			// 注意：schemeSpecificPart 对于 pdf:///storage/... 会返回 "//storage/..."（带 // 前缀），
+			// File("//path") 在某些 Android 版本上会解析失败，必须用 uri.path 或去掉前缀。
+			val path = uri.path ?: return null
 			val pageFragment = uri.fragment ?: return null
 			val pageIndex = pageFragment.removePrefix("page/").toIntOrNull() ?: return null
 			return File(path) to pageIndex

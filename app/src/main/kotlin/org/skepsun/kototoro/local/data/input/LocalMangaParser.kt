@@ -367,11 +367,13 @@ class LocalContentParser {
 		}
 
 		// 如果文件夹里包含 PDF 文件，委托给 LocalPdfParser 解析
-		val pdfFiles = rootFile.listFiles { f -> f.isFile && f.name.endsWith(".pdf", ignoreCase = true) }
-		if (!pdfFiles.isNullOrEmpty()) {
-			val pdfFile = pdfFiles.first()
-			val parser = org.skepsun.kototoro.local.pdf.LocalPdfParser(pdfFile, rootFile)
-			return parser.parseContent(withDetails = false)
+		if (rootFile.isDirectory && !hasIndexFile) {
+			val pdfFiles = rootFile.listFiles { f -> f.isFile && f.name.endsWith(".pdf", ignoreCase = true) }
+			if (!pdfFiles.isNullOrEmpty()) {
+				val pdfFile = pdfFiles.first()
+				val parser = org.skepsun.kototoro.local.pdf.LocalPdfParser(pdfFile, rootFile)
+				return parser.parseContent(withDetails = false)
+			}
 		}
 	}
 
