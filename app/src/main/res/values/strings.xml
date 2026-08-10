@@ -99,6 +99,7 @@
     <string name="reader_translation_long_press_hint">Long press Translation for language shortcuts</string>
     <string name="reader_translation_status_compact">Translating %1$d/%2$d</string>
     <string name="reader_page_turning_mode">Page turning mode</string>
+    <string name="reader_page_turning_mode_summary">Set page turning direction (LTR / RTL / vertical / webtoon)</string>
     <string name="double_page_mode">Two-page mode</string>
     <string name="double_page_landscape">Two pages in landscape</string>
     <string name="double_page_foldable">Two pages on foldables</string>

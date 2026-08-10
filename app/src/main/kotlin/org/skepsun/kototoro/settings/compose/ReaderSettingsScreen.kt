@@ -70,10 +70,13 @@ fun ReaderSettingsScreen(
             ) {
             SettingsChoicePreference(
                 title = stringResource(R.string.default_mode),
+                summary = stringResource(R.string.reader_page_turning_mode_summary),
                 options = stringArrayResource(R.array.reader_modes).mapIndexed { index, label ->
                     SettingsChoiceOption(readerModeNames[index], label)
                 },
-                value = settings.observeAsState(AppSettings.KEY_READER_MODE) { prefs.getString(AppSettings.KEY_READER_MODE, "") ?: "" }.value,
+                value = settings.observeAsState(AppSettings.KEY_READER_MODE) {
+                    prefs.getString(AppSettings.KEY_READER_MODE, "") ?: ""
+                }.value,
                 onValueChange = { settings.prefs.edit { putString(AppSettings.KEY_READER_MODE, it) } }
             )
 

@@ -47,6 +47,7 @@ import org.skepsun.kototoro.parsers.util.mapToSet
 import org.skepsun.kototoro.parsers.util.runCatchingCancellable
 import java.io.File
 import java.util.EnumSet
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Provider
 import javax.inject.Singleton
@@ -155,7 +156,29 @@ class LocalMangaRepository @Inject constructor(
 			}
 		}
 
-		else -> LocalContentParser(manga.url.toUri()).getContent(withDetails = true).manga
+		else -> {
+			// PDF 漫画的 url 是百分号编码的 pdf://<path>，不能直接 toUri() 再 File(uri.schemeSpecificPart)，
+			// 否则 %20/%5B 等特殊字符不会解码，导致文件找不到、章节为空 → 详情页显示"该章缺失"。
+			// 用字符串级提取路径 + URLDecoder.decode 还原真实文件路径。
+			val rawUrl = manga.url
+			val isPdf = rawUrl.isPdfUriString() ||
+				rawUrl.startsWith("pdf:", ignoreCase = true) ||
+				(rawUrl.endsWith(".pdf", ignoreCase = true) && rawUrl.contains("pdf:/", ignoreCase = true))
+			if (isPdf) {
+				val decodedPath = rawUrl.extractPdfPath()?.let {
+					runCatching { java.net.URLDecoder.decode(it, "UTF-8") }.getOrDefault(it)
+				}
+				val pdfFile = decodedPath?.let { java.io.File(it) }
+				if (pdfFile != null && pdfFile.isFile && pdfFile.canRead()) {
+					LocalContentParser(pdfFile).getContent(withDetails = true).manga
+				} else {
+					// 回退：尝试用 uri 方式解析
+					LocalContentParser(manga.url.toUri()).getContent(withDetails = true).manga
+				}
+			} else {
+				LocalContentParser(manga.url.toUri()).getContent(withDetails = true).manga
+			}
+		}
 	}
 
 	override suspend fun getPages(chapter: ContentChapter, nextChapterUrl: String?): List<ContentPage> {
@@ -380,20 +403,38 @@ class LocalMangaRepository @Inject constructor(
 		return true
 	}
 
+	// 本地列表解析缓存：path -> (lastModified, content)
+	// 每次 getRawListAsFlow 全量扫描磁盘并重新解析（PDF 要渲染页数，很慢），
+	// 缓存按文件修改时间失效，只有文件真正变化时才重新解析。
+	private val contentCache = ConcurrentHashMap<String, Pair<Long, LocalContent>>()
+
 	fun getRawListAsFlow(): Flow<LocalContent> = channelFlow {
 		val files = getAllFiles()
 		val dispatcher = Dispatchers.IO.limitedParallelism(MAX_PARALLELISM)
+		val currentPaths = HashSet<String>()
 		for (file in files) {
+			currentPaths.add(file.absolutePath)
 			launch(dispatcher) {
+				val cached = contentCache[file.absolutePath]
+				val lastModified = file.lastModified()
+				if (cached != null && cached.first == lastModified) {
+					send(cached.second)
+					return@launch
+				}
 				runCatchingCancellable {
 					LocalContentParser.getOrNull(file)?.getContent(withDetails = false)
 				}.onFailure { e ->
 					e.printStackTraceDebug()
 				}.onSuccess { m ->
-					if (m != null) send(m)
+					if (m != null) {
+						contentCache[file.absolutePath] = lastModified to m
+						send(m)
+					}
 				}
 			}
 		}
+		// 清理已不存在文件的缓存（避免无限增长）
+		contentCache.keys.retainAll(currentPaths)
 	}
 
 	private suspend fun getRawList(): ArrayList<LocalContent> = getRawListAsFlow().toCollection(ArrayList())
