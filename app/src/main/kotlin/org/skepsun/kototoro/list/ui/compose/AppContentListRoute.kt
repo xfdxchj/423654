@@ -30,6 +30,7 @@ import org.skepsun.kototoro.core.model.isLocal
 import org.skepsun.kototoro.core.ui.compose.contentCoverSharedKey
 import org.skepsun.kototoro.core.ui.compose.resolveSourceTitleForUi
 import org.skepsun.kototoro.core.ui.compose.performSelectionHapticFeedback
+import org.skepsun.kototoro.list.ui.model.ContentGridModel
 import org.skepsun.kototoro.list.ui.model.ContentListModel
 import org.skepsun.kototoro.list.ui.model.ErrorState
 import org.skepsun.kototoro.list.ui.model.ListModel
@@ -107,6 +108,9 @@ fun <VM : ContentListViewModel> AppContentListRoute(
     listHeader: (@Composable () -> Unit)? = null,
     showQuickFilterInline: Boolean = true,
     enableItemAnimations: Boolean = true,
+    randomPage: List<ContentGridModel>? = null,
+    onRandomClick: (() -> Unit)? = null,
+    onCloseRandomPage: (() -> Unit)? = null,
 ) {
     val items by viewModel.content.collectAsStateWithLifecycle()
     val listMode by viewModel.listMode.collectAsStateWithLifecycle()
@@ -118,6 +122,18 @@ fun <VM : ContentListViewModel> AppContentListRoute(
     val hapticFeedback = LocalHapticFeedback.current
     var pendingFixIds by remember { mutableStateOf<Set<Long>?>(null) }
     var pendingMarkAsCompletedItems by remember { mutableStateOf<List<ContentListModel>?>(null) }
+    // 随机 30 页：调用方未提供时由本路由自行维护
+    var internalRandomPage by remember { mutableStateOf<List<ContentGridModel>?>(null) }
+    val effectiveRandomPage = randomPage ?: internalRandomPage
+    val effectiveOnRandomClick: (() -> Unit)? = onRandomClick ?: {
+        internalRandomPage = items
+            .filterIsInstance<ContentGridModel>()
+            .shuffled()
+            .take(CONTENT_PAGE_SIZE)
+    }
+    val effectiveOnCloseRandomPage: (() -> Unit)? = onCloseRandomPage ?: {
+        internalRandomPage = null
+    }
 
     val activity = LocalContext.current as? androidx.activity.ComponentActivity
     val context = LocalContext.current
@@ -556,5 +572,8 @@ fun <VM : ContentListViewModel> AppContentListRoute(
         gridState = gridState,
         listState = listState,
         detailedListState = detailedListState,
+        randomPage = effectiveRandomPage,
+        onRandomClick = effectiveOnRandomClick,
+        onCloseRandomPage = effectiveOnCloseRandomPage,
     )
 }

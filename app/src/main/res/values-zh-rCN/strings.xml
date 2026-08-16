@@ -3181,4 +3181,11 @@ SHA-256 指纹:
     <string name="media_universe_empty">暂无历史记录或收藏</string>
     <string name="media_universe_history_and_favorites">历史记录与收藏</string>
     <string name="media_universe_item_summary">%1$s · %2$s</string>
+    <string name="content_page_previous">上一页</string>
+    <string name="content_page_next">下一页</string>
+    <string name="content_page_indicator">第 %1$d / %2$d 页</string>
+    <string name="content_page_indicator_single">第 %1$d 页</string>
+    <string name="content_random_page_title">随机页</string>
+    <string name="content_page_back_to_list">返回列表</string>
+    <string name="content_page_random_again">再随机</string>
 </resources>

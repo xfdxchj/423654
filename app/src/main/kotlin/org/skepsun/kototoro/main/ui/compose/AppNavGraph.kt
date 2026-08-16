@@ -1427,6 +1427,13 @@ internal fun LocalTopLevelRouteContent(
     val viewModel = hiltViewModel<org.skepsun.kototoro.local.ui.LocalListViewModel>()
     val activity = LocalContext.current as? androidx.activity.ComponentActivity
     var pendingRemoveSelection by remember { mutableStateOf<Set<Long>?>(null) }
+    var localRandomPage by remember { mutableStateOf<List<org.skepsun.kototoro.list.ui.model.ContentGridModel>?>(null) }
+    val generateLocalRandomPage: () -> Unit = {
+        localRandomPage = viewModel.content.value
+            .filterIsInstance<org.skepsun.kototoro.list.ui.model.ContentGridModel>()
+            .shuffled()
+            .take(org.skepsun.kototoro.list.ui.compose.CONTENT_PAGE_SIZE)
+    }
 
     DisposableEffect(appRouter) {
         onContextualMenuActionsChanged(
@@ -1452,10 +1459,10 @@ internal fun LocalTopLevelRouteContent(
                     )
                     add(
                         KototoroTopBarMenuAction(org.skepsun.kototoro.R.string.random) {
-                            val items = viewModel.content.value
-                                .filterIsInstance<org.skepsun.kototoro.list.ui.model.ContentListModel>()
-                            if (items.isNotEmpty()) {
-                                navigateToDetailsWithContent(items.random().manga, null)
+                            val gridItems = viewModel.content.value
+                                .filterIsInstance<org.skepsun.kototoro.list.ui.model.ContentGridModel>()
+                            if (gridItems.isNotEmpty()) {
+                                localRandomPage = gridItems.shuffled().take(org.skepsun.kototoro.list.ui.compose.CONTENT_PAGE_SIZE)
                             } else {
                                 android.widget.Toast.makeText(
                                     activity,
@@ -1483,6 +1490,9 @@ internal fun LocalTopLevelRouteContent(
             viewModel = viewModel,
             contentPadding = contentPadding,
             appRouter = appRouter,
+            randomPage = localRandomPage,
+            onRandomClick = generateLocalRandomPage,
+            onCloseRandomPage = { localRandomPage = null },
             pullRefreshEnabled = false,
             onTopBarOverrideChanged = {
                 onExploreSourceSelectionTopBarChanged(

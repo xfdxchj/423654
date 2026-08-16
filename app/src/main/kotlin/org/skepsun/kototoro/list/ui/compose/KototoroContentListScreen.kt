@@ -49,6 +49,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlin.math.floor
+import kotlin.math.max
 import org.skepsun.kototoro.R
 import org.skepsun.kototoro.core.BaseApp
 import org.skepsun.kototoro.core.prefs.AppSettings
@@ -83,6 +84,9 @@ import org.skepsun.kototoro.list.ui.model.QuickFilter
 
 private const val LoadMoreVisibleThreshold = 4
 private const val GridColumnMinFitRatio = 0.94f
+
+/** 网格分页：每页固定展示的内容数量（例如 3 列 × 10 行）。 */
+const val CONTENT_PAGE_SIZE = 30
 private val QuickFilterChipHeight = 32.dp
 private val QuickFilterChipIconSize = 16.dp
 private val GridHorizontalPadding = AppLayoutTokens.compactItemHorizontalPadding
@@ -181,6 +185,10 @@ fun KototoroContentListScreen(
     gridState: LazyGridState? = null,
     listState: LazyListState? = null,
     detailedListState: LazyListState? = null,
+    pageSize: Int = CONTENT_PAGE_SIZE,
+    randomPage: List<ContentGridModel>? = null,
+    onRandomClick: (() -> Unit)? = null,
+    onCloseRandomPage: (() -> Unit)? = null,
 ) {
     val canLoadMore = remember(items, hasMoreItems) {
         hasMoreItems && items.any { it is ContentListModel }
@@ -240,114 +248,170 @@ fun KototoroContentListScreen(
                     ListMode.COMPACT_GRID -> {
                         val posterStyle = compactPosterCardStyle(gridScale)
                         val actualGridState = gridState ?: rememberLazyGridState()
-                        LoadMoreOnNearEndEffect(
-                            state = actualGridState,
-                            enabled = canLoadMore,
-                            visibleThreshold = loadMoreVisibleThreshold,
-                            onLoadMore = onLoadMore,
-                        )
-                        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-                            val gridSpacing = 6.dp
-                            val innerHorizontalPadding = innerPadding.calculateLeftPadding(LayoutDirection.Ltr) +
-                                innerPadding.calculateRightPadding(LayoutDirection.Ltr)
-                            val horizontalPadding = innerHorizontalPadding + GridHorizontalPadding * 2
-                            val availableWidth = (maxWidth - horizontalPadding).coerceAtLeast(1.dp)
-                            val gridColumns = remember(availableWidth, posterStyle.itemWidth, gridSpacing) {
-                                resolveGridColumnCount(
-                                    availableWidth = availableWidth,
-                                    targetItemWidth = posterStyle.itemWidth,
-                                    spacing = gridSpacing,
-                                )
+                        // ---- 分页（每页 pageSize 个，按钮翻页）+ 随机页 ----
+                        val contentItems = remember(items) { items.filterIsInstance<ContentGridModel>() }
+                        val supplementaryItems = remember(items) { items.filterNot { it is ContentGridModel } }
+                        val isRandomMode = randomPage != null
+                        var pageIndex by rememberSaveable { mutableIntStateOf(0) }
+                        val loadedCount = contentItems.size
+                        val pageStart = pageIndex * pageSize
+                        val totalPagesKnown = if (!hasMoreItems) {
+                            max(1, (loadedCount + pageSize - 1) / pageSize)
+                        } else {
+                            null
+                        }
+                        // 目标页数据尚未加载完时自动加载更多
+                        LaunchedEffect(pageIndex, loadedCount, hasMoreItems, isRandomMode) {
+                            if (!isRandomMode && hasMoreItems && loadedCount <= pageStart) {
+                                onLoadMore()
                             }
-                            val effectivePosterStyle = remember(availableWidth, gridColumns, gridSpacing, posterStyle) {
-                                resolveGridPosterCardStyle(
-                                    baseStyle = posterStyle,
-                                    availableWidth = availableWidth,
-                                    columns = gridColumns,
-                                    spacing = gridSpacing,
-                                )
+                        }
+                        // 列表收缩（筛选/刷新）后夹紧页码
+                        LaunchedEffect(pageIndex, loadedCount, hasMoreItems) {
+                            if (!hasMoreItems && loadedCount > 0 && pageStart >= loadedCount) {
+                                val lastPage = max(0, (loadedCount - 1) / pageSize)
+                                if (pageIndex > lastPage) pageIndex = lastPage
                             }
-                            val gridContentPadding = PaddingValues(
-                                start = innerPadding.calculateLeftPadding(LayoutDirection.Ltr) + GridHorizontalPadding,
-                                top = innerPadding.calculateTopPadding(),
-                                end = innerPadding.calculateRightPadding(LayoutDirection.Ltr) + GridHorizontalPadding,
-                                bottom = innerPadding.calculateBottomPadding(),
-                            )
+                        }
+                        val visibleItems = if (isRandomMode) {
+                            randomPage.orEmpty()
+                        } else {
+                            contentItems.drop(pageStart).take(pageSize)
+                        }
+                        val canGoNext = !isRandomMode &&
+                            (hasMoreItems || (totalPagesKnown != null && pageIndex + 1 < totalPagesKnown))
+                        val canGoPrev = !isRandomMode && pageIndex > 0
+                        val pageLabel = if (isRandomMode) {
+                            stringResource(R.string.content_random_page_title)
+                        } else {
+                            val total = totalPagesKnown
+                            if (total != null) {
+                                stringResource(R.string.content_page_indicator, pageIndex + 1, total)
+                            } else {
+                                stringResource(R.string.content_page_indicator_single, pageIndex + 1)
+                            }
+                        }
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            BoxWithConstraints(modifier = Modifier.weight(1f)) {
+                                val gridSpacing = 6.dp
+                                val innerHorizontalPadding = innerPadding.calculateLeftPadding(LayoutDirection.Ltr) +
+                                    innerPadding.calculateRightPadding(LayoutDirection.Ltr)
+                                val horizontalPadding = innerHorizontalPadding + GridHorizontalPadding * 2
+                                val availableWidth = (maxWidth - horizontalPadding).coerceAtLeast(1.dp)
+                                val gridColumns = remember(availableWidth, posterStyle.itemWidth, gridSpacing) {
+                                    resolveGridColumnCount(
+                                        availableWidth = availableWidth,
+                                        targetItemWidth = posterStyle.itemWidth,
+                                        spacing = gridSpacing,
+                                    )
+                                }
+                                val effectivePosterStyle = remember(availableWidth, gridColumns, gridSpacing, posterStyle) {
+                                    resolveGridPosterCardStyle(
+                                        baseStyle = posterStyle,
+                                        availableWidth = availableWidth,
+                                        columns = gridColumns,
+                                        spacing = gridSpacing,
+                                    )
+                                }
+                                val gridContentPadding = PaddingValues(
+                                    start = innerPadding.calculateLeftPadding(LayoutDirection.Ltr) + GridHorizontalPadding,
+                                    top = innerPadding.calculateTopPadding(),
+                                    end = innerPadding.calculateRightPadding(LayoutDirection.Ltr) + GridHorizontalPadding,
+                                    bottom = innerPadding.calculateBottomPadding(),
+                                )
 
-                            LazyVerticalGrid(
-                                columns = GridCells.Fixed(gridColumns),
-                                state = actualGridState,
-                                contentPadding = gridContentPadding,
-                                horizontalArrangement = Arrangement.spacedBy(gridSpacing),
-                                verticalArrangement = Arrangement.spacedBy(10.dp),
-                                modifier = Modifier.fillMaxSize()
-                            ) {
-                                if (listHeader != null) {
-                                    item(span = { GridItemSpan(maxLineSpan) }) {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .horizontalBleed(GridHorizontalPadding),
-                                        ) {
-                                            listHeader()
+                                LazyVerticalGrid(
+                                    columns = GridCells.Fixed(gridColumns),
+                                    state = actualGridState,
+                                    contentPadding = gridContentPadding,
+                                    horizontalArrangement = Arrangement.spacedBy(gridSpacing),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                                    modifier = Modifier.fillMaxSize()
+                                ) {
+                                    if (listHeader != null) {
+                                        item(span = { GridItemSpan(maxLineSpan) }) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .horizontalBleed(GridHorizontalPadding),
+                                            ) {
+                                                listHeader()
+                                            }
                                         }
                                     }
-                                }
 
-                                items(
-                                    count = items.size,
-                                    key = { index -> listModelComposeKey(items[index], index) },
-                                    span = { index ->
-                                        val listModel = items[index]
-                                        if (listModel is ContentGridModel) {
-                                            GridItemSpan(1)
-                                        } else {
-                                            GridItemSpan(maxLineSpan)
-                                        }
-                                    },
-                                    contentType = { index ->
-                                        if (items[index] is ContentGridModel) "grid_card" else "supplementary"
-                                    },
-                                ) { index ->
-                                    val listModel = items[index]
-                                    if (listModel is ContentGridModel) {
-                                        Box(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            contentAlignment = Alignment.TopCenter,
-                                        ) {
-                                            KototoroContentCardGrid(
-                                                item = listModel,
-                                                isSelected = listModel.id in selectedItemsIds,
-                                                onClick = { coverBounds ->
-                                                    onPrepareItemTransition(listModel, coverBounds)
-                                                    onItemClick(listModel)
-                                                },
-                                                onLongClick = { onItemLongClick(listModel) },
-                                                sharedTransitionEnabled = sharedTransitionEnabled,
-                                                sharedElementInstanceKey = sharedElementInstanceKey,
-                                                showSourceInfo = showSourceOnCards,
+                                    items(
+                                        count = supplementaryItems.size + visibleItems.size,
+                                        key = { index ->
+                                            if (index < supplementaryItems.size) {
+                                                listModelComposeKey(supplementaryItems[index], index)
+                                            } else {
+                                                "paged_card_${pageIndex}_${visibleItems[index - supplementaryItems.size].id}"
+                                            }
+                                        },
+                                        span = { index ->
+                                            if (index < supplementaryItems.size) {
+                                                GridItemSpan(maxLineSpan)
+                                            } else {
+                                                GridItemSpan(1)
+                                            }
+                                        },
+                                        contentType = { index ->
+                                            if (index < supplementaryItems.size) "supplementary" else "grid_card"
+                                        },
+                                    ) { index ->
+                                        if (index < supplementaryItems.size) {
+                                            SupplementaryListItem(
+                                                item = supplementaryItems[index],
+                                                listMode = listMode,
                                                 gridScale = gridScale,
-                                                cardStyle = effectivePosterStyle,
-                                                compactOverlay = listMode == ListMode.COMPACT_GRID,
-                                                cellContentPadding = PaddingValues(0.dp),
-                                                uiPrefs = cardUiPrefs,
-                                                modifier = Modifier.width(effectivePosterStyle.itemWidth),
+                                                horizontalBleed = GridHorizontalPadding,
+                                                onQuickFilterOptionClick = onQuickFilterOptionClick,
+                                                showQuickFilterInline = showQuickFilterInline,
+                                                onEmptyActionClick = onEmptyActionClick,
+                                                onRetry = onRetry,
                                             )
+                                        } else {
+                                            val listModel = visibleItems[index - supplementaryItems.size]
+                                            Box(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                contentAlignment = Alignment.TopCenter,
+                                            ) {
+                                                KototoroContentCardGrid(
+                                                    item = listModel,
+                                                    isSelected = listModel.id in selectedItemsIds,
+                                                    onClick = { coverBounds ->
+                                                        onPrepareItemTransition(listModel, coverBounds)
+                                                        onItemClick(listModel)
+                                                    },
+                                                    onLongClick = { onItemLongClick(listModel) },
+                                                    sharedTransitionEnabled = sharedTransitionEnabled,
+                                                    sharedElementInstanceKey = sharedElementInstanceKey,
+                                                    showSourceInfo = showSourceOnCards,
+                                                    gridScale = gridScale,
+                                                    cardStyle = effectivePosterStyle,
+                                                    compactOverlay = listMode == ListMode.COMPACT_GRID,
+                                                    cellContentPadding = PaddingValues(0.dp),
+                                                    uiPrefs = cardUiPrefs,
+                                                    modifier = Modifier.width(effectivePosterStyle.itemWidth),
+                                                )
+                                            }
                                         }
-                                    } else {
-                                        SupplementaryListItem(
-                                            item = listModel,
-                                            listMode = listMode,
-                                            gridScale = gridScale,
-                                            horizontalBleed = GridHorizontalPadding,
-                                            onQuickFilterOptionClick = onQuickFilterOptionClick,
-                                            showQuickFilterInline = showQuickFilterInline,
-                                            onEmptyActionClick = onEmptyActionClick,
-                                            onRetry = onRetry,
-                                        )
                                     }
-
                                 }
+                            }
+                            if (contentItems.isNotEmpty() || isRandomMode) {
+                                PagerControlsBar(
+                                    label = pageLabel,
+                                    canGoPrev = canGoPrev,
+                                    canGoNext = canGoNext,
+                                    showRandom = onRandomClick != null,
+                                    isRandomMode = isRandomMode,
+                                    onPrev = { pageIndex = (pageIndex - 1).coerceAtLeast(0) },
+                                    onNext = { pageIndex += 1 },
+                                    onRandom = onRandomClick,
+                                    onCloseRandom = onCloseRandomPage,
+                                )
                             }
                         }
                     }
@@ -499,6 +563,63 @@ fun KototoroContentListScreen(
                 onClearSelection = onClearSelection,
                 onActionClick = onSelectionAction
             )
+        }
+    }
+}
+
+@Composable
+private fun PagerControlsBar(
+    label: String,
+    canGoPrev: Boolean,
+    canGoNext: Boolean,
+    showRandom: Boolean,
+    isRandomMode: Boolean,
+    onPrev: () -> Unit,
+    onNext: () -> Unit,
+    onRandom: (() -> Unit)?,
+    onCloseRandom: (() -> Unit)?,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (isRandomMode) {
+            TextButton(onClick = onCloseRandom ?: {}) {
+                Text(stringResource(R.string.content_page_back_to_list))
+            }
+        } else {
+            TextButton(onClick = onPrev, enabled = canGoPrev) {
+                Text(stringResource(R.string.content_page_previous))
+            }
+        }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
+        )
+        if (isRandomMode) {
+            if (onRandom != null) {
+                TextButton(onClick = onRandom) {
+                    Text(stringResource(R.string.content_page_random_again))
+                }
+            } else {
+                Spacer(modifier = Modifier.width(64.dp))
+            }
+        } else {
+            if (showRandom) {
+                TextButton(onClick = onRandom ?: {}) {
+                    Text(stringResource(R.string.random))
+                }
+            }
+            TextButton(onClick = onNext, enabled = canGoNext) {
+                Text(stringResource(R.string.content_page_next))
+            }
         }
     }
 }

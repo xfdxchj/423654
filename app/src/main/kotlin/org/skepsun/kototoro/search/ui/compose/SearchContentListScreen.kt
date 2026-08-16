@@ -171,7 +171,9 @@ import org.skepsun.kototoro.filter.ui.model.FilterProperty
 import org.skepsun.kototoro.filter.data.PersistableFilter
 import org.skepsun.kototoro.filter.data.PersistableFilter.Companion.MAX_TITLE_LENGTH
 import org.skepsun.kototoro.list.domain.ListFilterOption
+import org.skepsun.kototoro.list.ui.compose.CONTENT_PAGE_SIZE
 import org.skepsun.kototoro.list.ui.compose.KototoroContentListScreen
+import org.skepsun.kototoro.list.ui.model.ContentGridModel
 import org.skepsun.kototoro.list.ui.model.ContentListModel
 import org.skepsun.kototoro.list.ui.model.ErrorState
 import org.skepsun.kototoro.list.ui.model.ListModel
@@ -391,6 +393,13 @@ fun AppSearchContentListRoute(
     val quickFilter = preparedItems.quickFilter
     val contentItems = preparedItems.contentItems
     val contentListItems = preparedItems.contentListItems
+    var randomPage by remember { mutableStateOf<List<ContentGridModel>?>(null) }
+    val generateRandomPage: () -> Unit = {
+        randomPage = contentItems
+            .filterIsInstance<ContentGridModel>()
+            .shuffled()
+            .take(CONTENT_PAGE_SIZE)
+    }
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
     val exceptionResolver = (context as? org.skepsun.kototoro.core.ui.BaseComposeActivity)?.exceptionResolver
         ?: (context as? org.skepsun.kototoro.core.ui.BaseActivity<*>)?.exceptionResolver
@@ -650,7 +659,7 @@ fun AppSearchContentListRoute(
                 activeSpaceId = activeSpaceId,
                 onBackClick = onBackClick,
                 onSpaceSwitcherClick = onSpaceSwitcherClick,
-                onRandomClick = viewModel::openRandom,
+                onRandomClick = generateRandomPage,
                 onFilterClick = {
                     if (isWideAdaptiveLayout) {
                         when {
@@ -765,6 +774,9 @@ fun AppSearchContentListRoute(
                                 },
                                 listState = if (listMode == ListMode.LIST) wideListState else null,
                                 detailedListState = if (listMode == ListMode.DETAILED_LIST) wideDetailedListState else null,
+                                randomPage = randomPage,
+                                onRandomClick = generateRandomPage,
+                                onCloseRandomPage = { randomPage = null },
                             )
                         }
                         Box(
@@ -927,6 +939,9 @@ fun AppSearchContentListRoute(
                             selectedItemsIds = selectedItemsIds,
                             showInlineSelectionTopBar = false,
                             onRetry = ::resolveErrorAndRetry,
+                            randomPage = randomPage,
+                            onRandomClick = generateRandomPage,
+                            onCloseRandomPage = { randomPage = null },
                         )
                     }
                     Box(
