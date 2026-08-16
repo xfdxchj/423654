@@ -80,6 +80,7 @@ import org.skepsun.kototoro.core.db.migrations.Migration72To73
 import org.skepsun.kototoro.core.db.migrations.Migration73To74
 import org.skepsun.kototoro.core.db.migrations.Migration74To75
 import org.skepsun.kototoro.core.db.migrations.Migration75To76
+import org.skepsun.kototoro.core.db.migrations.Migration76To77
 import org.skepsun.kototoro.core.db.migrations.Migration1To2
 import org.skepsun.kototoro.core.db.migrations.Migration20To21
 import org.skepsun.kototoro.core.db.migrations.Migration21To22
