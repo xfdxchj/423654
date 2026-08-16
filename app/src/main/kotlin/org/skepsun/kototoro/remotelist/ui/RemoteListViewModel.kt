@@ -81,6 +81,9 @@ open class RemoteListViewModel @Inject constructor(
 	private val mangaList = MutableStateFlow<List<Content>?>(null)
 	private val hasNextPage = MutableStateFlow(false)
 	private val listError = MutableStateFlow<Throwable?>(null)
+
+	/** 是否有更多页可加载：直接映射内部的分页状态（hasNextPage）。 */
+	override val hasMoreItems: StateFlow<Boolean> = hasNextPage
 	private var loadingJob: Job? = null
 	private var randomJob: Job? = null
 	private var lastLoadedPageIndex: Int = -1

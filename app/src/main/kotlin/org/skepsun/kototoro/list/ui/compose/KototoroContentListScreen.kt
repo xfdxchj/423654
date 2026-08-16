@@ -1,6 +1,7 @@
 package org.skepsun.kototoro.list.ui.compose
 
 import coil3.compose.AsyncImage
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -253,14 +254,16 @@ fun KototoroContentListScreen(
                         // ---- 分页（每页 pageSize 个，按钮翻页）+ 随机页 ----
                         val contentItems = remember(items) { items.filterIsInstance<ContentGridModel>() }
                         val supplementaryItems = remember(items) { items.filterNot { it is ContentGridModel } }
-                        val isRandomMode = randomPage != null
+                        // 随机页必须有明确的退出回调，否则不进入随机模式（避免"退出不了"）
+                        val isRandomMode = randomPage != null && onCloseRandomPage != null
                         var pageIndex by rememberSaveable { mutableIntStateOf(0) }
                         val loadedCount = contentItems.size
                         val pageStart = pageIndex * pageSize
-                        val totalPagesKnown = if (!hasMoreItems) {
+                        // 总页数基于已加载数据计算；加载更多后会自动增长
+                        val totalPagesKnown = if (loadedCount > 0) {
                             max(1, (loadedCount + pageSize - 1) / pageSize)
                         } else {
-                            null
+                            1
                         }
                         // 目标页数据尚未加载完时自动加载更多
                         LaunchedEffect(pageIndex, loadedCount, hasMoreItems, isRandomMode) {
@@ -268,12 +271,16 @@ fun KototoroContentListScreen(
                                 onLoadMore()
                             }
                         }
-                        // 列表收缩（筛选/刷新）后夹紧页码
+                        // 列表收缩（筛选/刷新）且确认无更多数据后夹紧页码
                         LaunchedEffect(pageIndex, loadedCount, hasMoreItems) {
                             if (!hasMoreItems && loadedCount > 0 && pageStart >= loadedCount) {
                                 val lastPage = max(0, (loadedCount - 1) / pageSize)
                                 if (pageIndex > lastPage) pageIndex = lastPage
                             }
+                        }
+                        // 随机页也支持系统返回键退出
+                        BackHandler(enabled = isRandomMode) {
+                            onCloseRandomPage?.invoke()
                         }
                         val visibleItems = if (isRandomMode) {
                             randomPage.orEmpty()
@@ -281,17 +288,12 @@ fun KototoroContentListScreen(
                             contentItems.drop(pageStart).take(pageSize)
                         }
                         val canGoNext = !isRandomMode &&
-                            (hasMoreItems || (totalPagesKnown != null && pageIndex + 1 < totalPagesKnown))
+                            (hasMoreItems || pageIndex + 1 < totalPagesKnown)
                         val canGoPrev = !isRandomMode && pageIndex > 0
                         val pageLabel = if (isRandomMode) {
                             stringResource(R.string.content_random_page_title)
                         } else {
-                            val total = totalPagesKnown
-                            if (total != null) {
-                                stringResource(R.string.content_page_indicator, pageIndex + 1, total)
-                            } else {
-                                stringResource(R.string.content_page_indicator_single, pageIndex + 1)
-                            }
+                            stringResource(R.string.content_page_indicator, pageIndex + 1, totalPagesKnown)
                         }
                         Column(modifier = Modifier.fillMaxSize()) {
                             BoxWithConstraints(modifier = Modifier.weight(1f)) {

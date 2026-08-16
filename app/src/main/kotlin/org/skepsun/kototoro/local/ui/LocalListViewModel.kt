@@ -75,6 +75,9 @@ class LocalListViewModel @Inject constructor(
 
 	val onContentRemoved = MutableEventFlow<Unit>()
 
+	/** 本地列表一次性全量加载，没有"加载更多"分页。 */
+	override val hasMoreItems: StateFlow<Boolean> = kotlinx.coroutines.flow.MutableStateFlow(false)
+
 	override val currentGroupTab: StateFlow<BrowseGroupTab> = globalFavoritesState.selectedGroupTab
 
 	init {
