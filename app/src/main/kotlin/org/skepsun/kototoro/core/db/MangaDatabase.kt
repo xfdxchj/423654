@@ -149,7 +149,7 @@ import org.skepsun.kototoro.space.data.SpaceDefinitionEntity
 import org.skepsun.kototoro.explore.data.SourcePresetEntity
 import org.skepsun.kototoro.explore.data.SourcePresetsDao
 
-const val DATABASE_VERSION = 76
+const val DATABASE_VERSION = 77
 
 @Database(
 	entities = [
@@ -308,6 +308,7 @@ fun getDatabaseMigrations(context: Context): Array<Migration> = arrayOf(
 	Migration73To74(),
 	Migration74To75(),
 	Migration75To76(),
+	Migration76To77(),
 )
 
 fun MangaDatabase(context: Context): MangaDatabase = Room

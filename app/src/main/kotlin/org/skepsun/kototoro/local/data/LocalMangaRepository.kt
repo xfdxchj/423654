@@ -1,8 +1,13 @@
 package org.skepsun.kototoro.local.data
 
+import android.content.Context
+import androidx.core.content.edit
 import androidx.core.net.toFile
 import androidx.core.net.toUri
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.channelFlow
@@ -10,10 +15,13 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.toCollection
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.skepsun.kototoro.core.model.LocalMangaSource
 import org.skepsun.kototoro.core.model.isLocal
 import org.skepsun.kototoro.core.model.isNsfw
 import org.skepsun.kototoro.core.model.getContentType
+import org.skepsun.kototoro.core.parser.ContentDataRepository
 import org.skepsun.kototoro.core.parser.ContentRepository
 import org.skepsun.kototoro.parsers.model.NovelChapterContent
 import org.skepsun.kototoro.core.prefs.AppSettings
@@ -55,6 +63,9 @@ import javax.inject.Singleton
 private const val MAX_PARALLELISM = 4
 private const val FILENAME_SKIP = ".notamanga"
 private const val BACKUP_SUFFIX = ".bk"
+private const val REFRESH_MIN_INTERVAL_MS = 15_000L
+private const val SCAN_SIGNATURE_PREFS = "_local_scan_signature"
+private const val KEY_SCAN_SIGNATURE = "signature"
 
 @Singleton
 class LocalMangaRepository @Inject constructor(
@@ -64,7 +75,11 @@ class LocalMangaRepository @Inject constructor(
 	private val settings: AppSettings,
 	private val lock: ContentLock,
 	private val repositoryFactory: Provider<ContentRepository.Factory>,
+	@ApplicationContext private val context: Context,
+	private val mangaDataRepository: ContentDataRepository,
 ) : ContentRepository {
+
+	private val scanSignaturePrefs = context.getSharedPreferences(SCAN_SIGNATURE_PREFS, Context.MODE_PRIVATE)
 
 	override val source = LocalMangaSource
 
@@ -404,11 +419,47 @@ class LocalMangaRepository @Inject constructor(
 	}
 
 	// 本地列表解析缓存：path -> (lastModified, content)
-	// 每次 getRawListAsFlow 全量扫描磁盘并重新解析（PDF 要渲染页数，很慢），
 	// 缓存按文件修改时间失效，只有文件真正变化时才重新解析。
 	private val contentCache = ConcurrentHashMap<String, Pair<Long, LocalContent>>()
 
+	// 后台增量刷新用作用域与门控（进程级单例，生命周期与进程一致）
+	private val backgroundScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+	private val refreshMutex = Mutex()
+	@Volatile
+	private var lastRefreshTimestamp = 0L
+
+	/**
+	 * 快通道：优先从持久化索引返回本地内容，避免每次进入应用都重新读取、
+	 * 解析所有本地下载路径。未变化文件只做 stat 检查；新增/变更/删除由
+	 * [refreshIndexIfNeeded] 在后台增量处理并更新索引。
+	 */
 	fun getRawListAsFlow(): Flow<LocalContent> = channelFlow {
+		val indexed = localContentIndex.getAllIndexed()
+		for (entry in indexed) {
+			val file = File(entry.path)
+			// 已删除或已变更的文件交给后台刷新处理，这里不阻塞、不解析
+			if (!file.exists() || file.lastModified() != entry.mtime) continue
+			val cached = contentCache[entry.path]
+			val local = when {
+				cached != null && cached.first == entry.mtime -> cached.second
+				else -> mangaDataRepository.findContentById(entry.mangaId, withChapters = false)
+					?.let { LocalContent(it, file) }
+			}
+			if (local != null) {
+				contentCache[entry.path] = entry.mtime to local
+				send(local)
+			}
+		}
+		backgroundScope.launch {
+			refreshIndexIfNeeded()
+		}
+	}
+
+	/**
+	 * 全量扫描：遍历所有可读目录并解析每个文件（仅在首次安装/升级重建索引时使用，
+	 * 见 [org.skepsun.kototoro.local.data.index.LocalContentIndex.update]）。
+	 */
+	fun getRawListFullScanFlow(): Flow<LocalContent> = channelFlow {
 		val files = getAllFiles()
 		val dispatcher = Dispatchers.IO.limitedParallelism(MAX_PARALLELISM)
 		val currentPaths = HashSet<String>()
@@ -438,6 +489,71 @@ class LocalMangaRepository @Inject constructor(
 	}
 
 	private suspend fun getRawList(): ArrayList<LocalContent> = getRawListAsFlow().toCollection(ArrayList())
+
+	/**
+	 * 后台增量刷新：只解析新增/变更文件，并删除已不存在文件的索引项。
+	 * 通过"最小间隔 + 目录签名"双层门控，目录未变化时直接跳过，
+	 * 从而避免每次进入应用都重复扫描所有本地下载路径。
+	 */
+	private suspend fun refreshIndexIfNeeded() {
+		val now = System.currentTimeMillis()
+		if (now - lastRefreshTimestamp < REFRESH_MIN_INTERVAL_MS) return
+		lastRefreshTimestamp = now
+		if (!isStorageSignatureChanged()) return
+		refreshMutex.withLock {
+			// 双检：等待锁期间可能已被其他协程刷新完成
+			if (!isStorageSignatureChanged()) return
+			refreshIndex()
+		}
+	}
+
+	private suspend fun refreshIndex() {
+		var changed = false
+		runCatchingCancellable {
+			val indexedByPath = localContentIndex.getAllIndexed().associateBy { it.path }
+			val seenPaths = HashSet<String>()
+			val files = getAllFiles()
+			for (file in files) {
+				val path = file.absolutePath
+				seenPaths.add(path)
+				val entry = indexedByPath[path]
+				val lastModified = file.lastModified()
+				if (entry != null && entry.mtime == lastModified) continue
+				val parsed = runCatchingCancellable {
+					LocalContentParser.getOrNull(file)?.getContent(withDetails = false)
+				}.getOrNull() ?: continue
+				localContentIndex.put(parsed)
+				contentCache[path] = lastModified to parsed
+				changed = true
+			}
+			// 删除磁盘上已不存在的索引项
+			for (path in indexedByPath.keys) {
+				if (path in seenPaths) continue
+				indexedByPath[path]?.let { localContentIndex.delete(it.mangaId) }
+				contentCache.remove(path)
+				changed = true
+			}
+		}.onFailure {
+			it.printStackTraceDebug()
+		}
+		persistStorageSignature()
+		if (changed) {
+			localStorageChanges.emit(null)
+		}
+	}
+
+	private suspend fun isStorageSignatureChanged(): Boolean {
+		return buildStorageSignature() != scanSignaturePrefs.getString(KEY_SCAN_SIGNATURE, null)
+	}
+
+	private suspend fun buildStorageSignature(): String {
+		val dirs = storageManager.getAllReadableDirs()
+		return dirs.joinToString("|") { "${it.absolutePath}:${it.lastModified()}" }
+	}
+
+	private suspend fun persistStorageSignature() {
+		scanSignaturePrefs.edit { putString(KEY_SCAN_SIGNATURE, buildStorageSignature()) }
+	}
 
 	private suspend fun getAllFiles() = storageManager.getAllReadableDirs()
 		.asSequence()

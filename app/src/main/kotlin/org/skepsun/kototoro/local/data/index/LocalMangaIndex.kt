@@ -47,7 +47,7 @@ suspend fun update() = mutex.withLock {
 		val dao = db.getLocalContentIndexDao()
 		dao.clear()
 		localContentRepositoryProvider.get()
-			.getRawListAsFlow()
+			.getRawListFullScanFlow()
 			.collect { upsert(it) }
 		// novels
 		localNovelRepositoryProvider.get()
@@ -107,6 +107,11 @@ suspend fun update() = mutex.withLock {
 		}
 	}
 
+	/** 返回索引中全部 (mangaId, path, mtime)，供列表快通道使用。 */
+	suspend fun getAllIndexed(): List<LocalContentIndexEntity> {
+		return db.getLocalContentIndexDao().findAll()
+	}
+
 	private suspend fun upsert(manga: LocalContent) {
 		mangaDataRepository.storeContent(manga.manga, replaceExisting = true)
 		db.getLocalContentIndexDao().upsert(manga.toEntity())
@@ -115,6 +120,7 @@ suspend fun update() = mutex.withLock {
 	private fun LocalContent.toEntity() = LocalContentIndexEntity(
 		mangaId = manga.id,
 		path = file.path,
+		mtime = file.lastModified(),
 	)
 
 	private fun isUpdateRequired() = currentVersion < VERSION
@@ -123,6 +129,6 @@ suspend fun update() = mutex.withLock {
 
 		private const val PREF_NAME = "_local_index"
 		private const val KEY_VERSION = "ver"
-		private const val VERSION = 3
+		private const val VERSION = 4
 	}
 }

@@ -21,4 +21,9 @@ class LocalContentIndexEntity(
 	@PrimaryKey(autoGenerate = false)
 	@ColumnInfo(name = "manga_id") val mangaId: Long,
 	@ColumnInfo(name = "path") val path: String,
+	/**
+	 * 文件最后修改时间戳（毫秒）。持久化后，本地列表可以只做 stat 检查，
+	 * 避免每次进入应用都重新读取并解析所有本地文件。
+	 */
+	@ColumnInfo(name = "mtime", defaultValue = "0") val mtime: Long = 0L,
 )
