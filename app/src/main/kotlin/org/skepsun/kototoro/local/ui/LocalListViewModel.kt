@@ -5,6 +5,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.launchIn
@@ -56,6 +57,7 @@ class LocalListViewModel @Inject constructor(
 	exploreRepository: ExploreRepository,
 	@param:LocalStorageChanges private val localStorageChanges: SharedFlow<LocalContent?>,
 	private val localStorageManager: LocalStorageManager,
+	private val localContentRepository: org.skepsun.kototoro.local.data.LocalMangaRepository,
 	sourcesRepository: ContentSourcesRepository,
 	sourceAvailabilityRepository: SourceAvailabilityRepository,
 	mangaDataRepository: ContentDataRepository,
@@ -88,6 +90,14 @@ class LocalListViewModel @Inject constructor(
 				}
 		}
 		settings.subscribe(this)
+	}
+
+	/** 手动刷新：先增量刷新本地索引（有新文件才扫描），再重新加载列表。 */
+	override fun onRefresh() {
+		viewModelScope.launch(Dispatchers.Default) {
+			localContentRepository.refreshIndexNow()
+			loadList(filterCoordinator.snapshot(), append = false)
+		}
 	}
 
 	override suspend fun onBuildList(list: MutableList<ListModel>) {

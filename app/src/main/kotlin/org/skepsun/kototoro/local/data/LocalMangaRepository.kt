@@ -63,7 +63,6 @@ import javax.inject.Singleton
 private const val MAX_PARALLELISM = 4
 private const val FILENAME_SKIP = ".notamanga"
 private const val BACKUP_SUFFIX = ".bk"
-private const val REFRESH_MIN_INTERVAL_MS = 15_000L
 private const val SCAN_SIGNATURE_PREFS = "_local_scan_signature"
 private const val KEY_SCAN_SIGNATURE = "signature"
 
@@ -422,26 +421,34 @@ class LocalMangaRepository @Inject constructor(
 	// 缓存按文件修改时间失效，只有文件真正变化时才重新解析。
 	private val contentCache = ConcurrentHashMap<String, Pair<Long, LocalContent>>()
 
-	// 后台增量刷新用作用域与门控（进程级单例，生命周期与进程一致）
+	// 后台增量刷新用作用域与互斥锁（进程级单例，生命周期与进程一致）
 	private val backgroundScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 	private val refreshMutex = Mutex()
-	@Volatile
-	private var lastRefreshTimestamp = 0L
+
+	init {
+		// 文件变更（下载完成、删除等）时自动增量刷新索引；
+		// 冷启动打开列表不再自动重新扫描，改为手动刷新按钮触发。
+		backgroundScope.launch {
+			localStorageChanges.collect {
+				refreshIndexNow()
+			}
+		}
+	}
 
 	/**
-	 * 快通道：优先从持久化索引返回本地内容，避免每次进入应用都重新读取、
-	 * 解析所有本地下载路径。未变化文件只做 stat 检查；新增/变更/删除由
-	 * [refreshIndexIfNeeded] 在后台增量处理并更新索引。
+	 * 快通道：只读持久化索引返回本地内容（缓存优先）。
+	 * 冷启动/重新打开列表时不做磁盘重扫，文件是否过期由
+	 * [refreshIndexNow] 在文件变更事件或手动刷新时处理。
 	 */
 	fun getRawListAsFlow(): Flow<LocalContent> = channelFlow {
 		val indexed = localContentIndex.getAllIndexed()
 		for (entry in indexed) {
 			val file = File(entry.path)
-			// 已删除或已变更的文件交给后台刷新处理，这里不阻塞、不解析
-			if (!file.exists() || file.lastModified() != entry.mtime) continue
+			// 已删除的文件交给刷新清理，这里不阻塞、不解析
+			if (!file.exists()) continue
 			val cached = contentCache[entry.path]
 			val local = when {
-				cached != null && cached.first == entry.mtime -> cached.second
+				cached != null -> cached.second
 				else -> mangaDataRepository.findContentById(entry.mangaId, withChapters = false)
 					?.let { LocalContent(it, file) }
 			}
@@ -449,9 +456,6 @@ class LocalMangaRepository @Inject constructor(
 				contentCache[entry.path] = entry.mtime to local
 				send(local)
 			}
-		}
-		backgroundScope.launch {
-			refreshIndexIfNeeded()
 		}
 	}
 
@@ -491,17 +495,13 @@ class LocalMangaRepository @Inject constructor(
 	private suspend fun getRawList(): ArrayList<LocalContent> = getRawListAsFlow().toCollection(ArrayList())
 
 	/**
-	 * 后台增量刷新：只解析新增/变更文件，并删除已不存在文件的索引项。
-	 * 通过"最小间隔 + 目录签名"双层门控，目录未变化时直接跳过，
-	 * 从而避免每次进入应用都重复扫描所有本地下载路径。
+	 * 增量刷新索引：只解析新增/变更文件，并删除已不存在文件的索引项。
+	 * 通过目录签名门控：目录未变化时直接跳过（避免重复扫描与死循环），
+	 * 目录变化时才实际扫描。由文件变更事件与手动"刷新"按钮触发。
 	 */
-	private suspend fun refreshIndexIfNeeded() {
-		val now = System.currentTimeMillis()
-		if (now - lastRefreshTimestamp < REFRESH_MIN_INTERVAL_MS) return
-		lastRefreshTimestamp = now
-		if (!isStorageSignatureChanged()) return
+	suspend fun refreshIndexNow() {
+		if (refreshMutex.isLocked) return
 		refreshMutex.withLock {
-			// 双检：等待锁期间可能已被其他协程刷新完成
 			if (!isStorageSignatureChanged()) return
 			refreshIndex()
 		}

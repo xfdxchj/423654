@@ -1445,6 +1445,11 @@ internal fun LocalTopLevelRouteContent(
                             appRouter.showImportDialog()
                         },
                     )
+                    add(
+                        KototoroTopBarMenuAction(org.skepsun.kototoro.R.string.refresh) {
+                            viewModel.onRefresh()
+                        },
+                    )
                     if (appRouter.isFilterSupported()) {
                         add(
                             KototoroTopBarMenuAction(org.skepsun.kototoro.R.string.filter) {

@@ -3314,4 +3314,5 @@
     <string name="content_random_page_title">Random page</string>
     <string name="content_page_back_to_list">Back to list</string>
     <string name="content_page_random_again">Random again</string>
+    <string name="refresh">Refresh</string>
 </resources>

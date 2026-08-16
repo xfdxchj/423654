@@ -155,7 +155,7 @@ open class RemoteListViewModel @Inject constructor(
 
 	}
 
-	override fun onRefresh() {
+	open override fun onRefresh() {
 		Log.d(
 			RemoteListPaginationLogTag,
 			"refresh source=${source.name} current=${mangaList.value.sizeOrZero()} hasNext=${hasNextPage.value}",
