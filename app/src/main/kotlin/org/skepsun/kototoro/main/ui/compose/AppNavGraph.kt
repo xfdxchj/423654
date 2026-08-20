@@ -969,6 +969,7 @@ private fun MainShellTopLevelEntryContent(
             onExploreSourceSelectionTopBarChanged = onExploreSourceSelectionTopBarChanged,
             onContextualMenuActionsChanged = onContextualMenuActionsChanged,
             navigateToDetailsWithContent = navigateToDetailsWithContent,
+            bottomBarHeightPx = bottomBarHeightPx,
         )
         org.skepsun.kototoro.main.ui.navigation3.SuggestionsNavKey -> SuggestionsTopLevelRouteContent(
             animatedVisibilityScope = animatedVisibilityScope,
@@ -1423,9 +1424,12 @@ internal fun LocalTopLevelRouteContent(
     onExploreSourceSelectionTopBarChanged: (TopBarOverrideState?) -> Unit,
     onContextualMenuActionsChanged: (RouteScopedTopBarMenuActions) -> Unit,
     navigateToDetailsWithContent: (Content, String?) -> Unit,
+    bottomBarHeightPx: Int = 0,
 ) {
     val viewModel = hiltViewModel<org.skepsun.kototoro.local.ui.LocalListViewModel>()
     val activity = LocalContext.current as? androidx.activity.ComponentActivity
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val bottomBarPadding = with(density) { bottomBarHeightPx.toDp() }
     var pendingRemoveSelection by remember { mutableStateOf<Set<Long>?>(null) }
     var localRandomPage by remember { mutableStateOf<List<org.skepsun.kototoro.list.ui.model.ContentGridModel>?>(null) }
     val generateLocalRandomPage: () -> Unit = {
@@ -1498,6 +1502,7 @@ internal fun LocalTopLevelRouteContent(
             randomPage = localRandomPage,
             onRandomClick = generateLocalRandomPage,
             onCloseRandomPage = { localRandomPage = null },
+            bottomBarPadding = bottomBarPadding,
             pullRefreshEnabled = false,
             onTopBarOverrideChanged = {
                 onExploreSourceSelectionTopBarChanged(

@@ -28,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -192,6 +193,7 @@ fun KototoroContentListScreen(
     randomPage: List<ContentGridModel>? = null,
     onRandomClick: (() -> Unit)? = null,
     onCloseRandomPage: (() -> Unit)? = null,
+    bottomBarPadding: androidx.compose.ui.unit.Dp = 0.dp,
 ) {
     val canLoadMore = remember(items, hasMoreItems) {
         hasMoreItems && items.any { it is ContentListModel }
@@ -405,17 +407,24 @@ fun KototoroContentListScreen(
                                 }
                             }
                             if (contentItems.isNotEmpty() || isRandomMode) {
-                                PagerControlsBar(
-                                    label = pageLabel,
-                                    canGoPrev = canGoPrev,
-                                    canGoNext = canGoNext,
-                                    showRandom = onRandomClick != null,
-                                    isRandomMode = isRandomMode,
-                                    onPrev = { pageIndex = (pageIndex - 1).coerceAtLeast(0) },
-                                    onNext = { pageIndex += 1 },
-                                    onRandom = onRandomClick,
-                                    onCloseRandom = onCloseRandomPage,
-                                )
+                                // 底部导航栏上方显示分页栏：加背景 + 底部偏移，避免被导航栏遮挡
+                                Surface(
+                                    color = MaterialTheme.colorScheme.surface,
+                                    tonalElevation = 2.dp,
+                                    modifier = Modifier.padding(bottom = bottomBarPadding),
+                                ) {
+                                    PagerControlsBar(
+                                        label = pageLabel,
+                                        canGoPrev = canGoPrev,
+                                        canGoNext = canGoNext,
+                                        showRandom = onRandomClick != null,
+                                        isRandomMode = isRandomMode,
+                                        onPrev = { pageIndex = (pageIndex - 1).coerceAtLeast(0) },
+                                        onNext = { pageIndex += 1 },
+                                        onRandom = onRandomClick,
+                                        onCloseRandom = onCloseRandomPage,
+                                    )
+                                }
                             }
                         }
                     }
