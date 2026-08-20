@@ -349,6 +349,21 @@ class FavouritesRepository @Inject constructor(
 		return false
 	}
 
+	/** 批量判断哪些 manga 已收藏（一次实体解析 + 一次批量查询，替代逐本查询）。 */
+	suspend fun getFavoriteMangaIds(mangaIds: Collection<Long>): Set<Long> {
+		if (mangaIds.isEmpty()) return emptySet()
+		val entityIdsByMangaId = resolveEntityIdsByMangaIds(mangaIds)
+		val entityIds = entityIdsByMangaId.values.distinct()
+		if (entityIds.isEmpty()) return emptySet()
+		val favouriteEntityIds = db.getWorkFavouritesDao()
+			.findCategoryMemberships(entityIds)
+			.mapTo(HashSet()) { it.entityId }
+		if (favouriteEntityIds.isEmpty()) return emptySet()
+		return mangaIds.filterTo(LinkedHashSet()) { mangaId ->
+			entityIdsByMangaId[mangaId] in favouriteEntityIds
+		}
+	}
+
 	suspend fun getCategoriesIdsByWork(mangaId: Long): Set<Long> {
 		return findWorkCategoryIds(mangaId)
 	}

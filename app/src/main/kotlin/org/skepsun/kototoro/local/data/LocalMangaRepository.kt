@@ -442,6 +442,8 @@ class LocalMangaRepository @Inject constructor(
 	 */
 	fun getRawListAsFlow(): Flow<LocalContent> = channelFlow {
 		val indexed = localContentIndex.getAllIndexed()
+		// 一次批量读取全部 manga 行，替代逐本查询（N 次 SQL → 1 次）
+		val cachedById = mangaDataRepository.findContentByIds(indexed.map { it.mangaId })
 		for (entry in indexed) {
 			val file = File(entry.path)
 			// 已删除的文件交给刷新清理，这里不阻塞、不解析
@@ -449,8 +451,7 @@ class LocalMangaRepository @Inject constructor(
 			val cached = contentCache[entry.path]
 			val local = when {
 				cached != null -> cached.second
-				else -> mangaDataRepository.findContentById(entry.mangaId, withChapters = false)
-					?.let { LocalContent(it, file) }
+				else -> cachedById[entry.mangaId]?.let { LocalContent(it, file) }
 			}
 			if (local != null) {
 				contentCache[entry.path] = entry.mtime to local

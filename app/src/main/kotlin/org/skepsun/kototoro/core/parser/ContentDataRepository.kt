@@ -111,9 +111,18 @@ class ContentDataRepository @Inject constructor(
 	suspend fun getMetadataSourceSelections(mangaIds: Collection<Long>): LongObjectMap<MetadataSourceSelection> {
 		if (mangaIds.isEmpty()) return MutableLongObjectMap(0)
 		val map = MutableLongObjectMap<MetadataSourceSelection>(mangaIds.size)
+		// 一次查询全部 active 本地绑定，替代逐本查询（N×2 次 SQL → 1 次）
+		val bindings = db.getEntityGraphDao().findActiveLocalBindings()
+		val bindingByExternalId = HashMap<String, org.skepsun.kototoro.entitygraph.data.EntityBindingRecord>(bindings.size)
+		for (binding in bindings) {
+			val prev = bindingByExternalId[binding.externalId]
+			// 与单条查询语义一致：local_manga 优先于 "0"
+			if (prev == null || (prev.source != "local_manga" && binding.source == "local_manga")) {
+				bindingByExternalId[binding.externalId] = binding
+			}
+		}
 		val entityIdsByMangaId = mangaIds.associateWith { mangaId ->
-			db.getEntityGraphDao().findActiveBinding("local_manga", mangaId.toString())?.entityId
-				?: db.getEntityGraphDao().findActiveBinding("0", mangaId.toString())?.entityId
+			bindingByExternalId[mangaId.toString()]?.entityId
 		}
 		val entitySelections = getEntityMetadataSourceSelections(entityIdsByMangaId.values.filterNotNull().distinct())
 		entityIdsByMangaId.forEach { (mangaId, entityId) ->
@@ -417,6 +426,17 @@ class ContentDataRepository @Inject constructor(
 			null
 		}
 		return db.getMangaDao().find(mangaId)?.toContent(chapters)
+	}
+
+	/**
+	 * 批量读取内容（一次 SQL，替代逐本 findContentById）。
+	 * 仅返回不带章节的基本信息，供列表/快通道使用。
+	 */
+	suspend fun findContentByIds(mangaIds: Collection<Long>): Map<Long, Content> {
+		if (mangaIds.isEmpty()) return emptyMap()
+		val rows = db.getMangaDao().findWithTagsByIds(mangaIds)
+		if (rows.isEmpty()) return emptyMap()
+		return rows.associate { row -> row.manga.id to row.toContent(null) }
 	}
 
 	suspend fun findPreferredLocalContentById(mangaId: Long, withChapters: Boolean): Content? {

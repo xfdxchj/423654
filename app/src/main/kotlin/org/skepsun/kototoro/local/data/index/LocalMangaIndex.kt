@@ -112,6 +112,11 @@ suspend fun update() = mutex.withLock {
 		return db.getLocalContentIndexDao().findAll()
 	}
 
+	/** 返回索引中全部 mangaId（一次查询），供列表批量判断"是否已保存"。 */
+	suspend fun getAllMangaIds(): Set<Long> {
+		return db.getLocalContentIndexDao().findAllMangaIds().toHashSet()
+	}
+
 	private suspend fun upsert(manga: LocalContent) {
 		mangaDataRepository.storeContent(manga.manga, replaceExisting = true)
 		db.getLocalContentIndexDao().upsert(manga.toEntity())
