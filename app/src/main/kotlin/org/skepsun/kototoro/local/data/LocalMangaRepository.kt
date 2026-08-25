@@ -592,10 +592,13 @@ class LocalMangaRepository @Inject constructor(
 			}
 		}
 		android.util.Log.d("LocalListTiming", "getRawListAsFlow done: ${System.currentTimeMillis() - t0}ms (exists=${existsMs}ms)")
-		// 后台统计页数（不阻塞列表显示）
-		backgroundScope.launch {
-			statPages(indexed)
-		}
+	}
+
+	/** 手动刷新时统计页数（其他情况不统计，避免每次打开列表都扫描 PDF）。 */
+	suspend fun statPagesNow() {
+		val indexed = localContentIndex.getAllIndexed()
+		if (indexed.isEmpty()) return
+		statPages(indexed)
 	}
 
 	/**

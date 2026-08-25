@@ -103,10 +103,11 @@ class LocalListViewModel @Inject constructor(
 		settings.subscribe(this)
 	}
 
-	/** 手动刷新：先增量刷新本地索引（有新文件才扫描），再重新加载列表。 */
+	/** 手动刷新：刷新本地索引并统计页数（仅刷新时统计，其他情况不统计），再重新加载列表。 */
 	override fun onRefresh() {
 		viewModelScope.launch(Dispatchers.Default) {
 			localContentRepository.refreshIndexNow()
+			localContentRepository.statPagesNow()
 			loadList(filterCoordinator.snapshot(), append = false)
 		}
 	}
