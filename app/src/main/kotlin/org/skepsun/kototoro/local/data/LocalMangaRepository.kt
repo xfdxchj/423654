@@ -36,6 +36,7 @@ import org.skepsun.kototoro.core.util.ext.printStackTraceDebug
 import org.skepsun.kototoro.core.util.ext.takeIfWriteable
 import org.skepsun.kototoro.core.util.ext.withChildren
 import org.skepsun.kototoro.local.data.index.LocalContentIndex
+import org.skepsun.kototoro.local.data.index.LocalContentIndexEntity
 import org.skepsun.kototoro.local.data.input.LocalContentParser
 import org.skepsun.kototoro.local.data.output.LocalContentOutput
 import org.skepsun.kototoro.local.data.output.LocalContentUtil
