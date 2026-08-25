@@ -439,6 +439,23 @@ class ContentDataRepository @Inject constructor(
 		return rows.associate { row -> row.manga.id to row.toContent(null) }
 	}
 
+	/** 批量读取轻量列（列表排序/过滤用，一次 SQL）。 */
+	suspend fun findLightByIds(ids: Collection<Long>): List<org.skepsun.kototoro.core.db.dao.MangaDao.MangaLightRow> {
+		return db.getMangaDao().findLightByIds(ids)
+	}
+
+	/** 批量读取 mangaId → 标签标题集合（列表过滤用）。 */
+	suspend fun findTagTitlesByMangaIds(ids: Collection<Long>): Map<Long, Set<String>> {
+		if (ids.isEmpty()) return emptyMap()
+		val relations = db.getMangaDao().findTagRelationsByMangaIds(ids)
+		if (relations.isEmpty()) return emptyMap()
+		val tagIds = relations.mapTo(HashSet()) { it.tagId }
+		val titlesById = db.getTagsDao().findByIds(tagIds).associate { it.id to it.title }
+		return relations
+			.groupBy({ it.mangaId }, { titlesById[it.tagId].orEmpty() })
+			.mapValues { it.value.toSet() }
+	}
+
 	suspend fun findPreferredLocalContentById(mangaId: Long, withChapters: Boolean): Content? {
 		val preferredLocalId = findEntityPrefsForMangaId(mangaId)?.preferredLocalMangaId
 		return findContentById(preferredLocalId ?: mangaId, withChapters)

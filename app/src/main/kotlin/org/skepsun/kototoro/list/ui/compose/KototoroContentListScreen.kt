@@ -256,6 +256,10 @@ fun KototoroContentListScreen(
                         // ---- 分页（每页 pageSize 个，按钮翻页）+ 随机页 ----
                         val contentItems = remember(items) { items.filterIsInstance<ContentGridModel>() }
                         val supplementaryItems = remember(items) { items.filterNot { it is ContentGridModel } }
+                        android.util.Log.d(
+                            "LocalListTiming",
+                            "UI grid: listMode=$listMode totalItems=${items.size} contentItems=${contentItems.size} supplementary=${supplementaryItems.size}",
+                        )
                         // 随机页必须有明确的退出回调，否则不进入随机模式（避免"退出不了"）
                         val isRandomMode = randomPage != null && onCloseRandomPage != null
                         var pageIndex by rememberSaveable { mutableIntStateOf(0) }
@@ -294,6 +298,9 @@ fun KototoroContentListScreen(
                         val canGoPrev = !isRandomMode && pageIndex > 0
                         val pageLabel = if (isRandomMode) {
                             stringResource(R.string.content_random_page_title)
+                        } else if (hasMoreItems) {
+                            // 还有更多页未加载完：只显示当前页码
+                            stringResource(R.string.content_page_indicator_single, pageIndex + 1)
                         } else {
                             stringResource(R.string.content_page_indicator, pageIndex + 1, totalPagesKnown)
                         }

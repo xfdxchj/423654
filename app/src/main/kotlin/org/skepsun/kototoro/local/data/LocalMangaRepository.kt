@@ -8,6 +8,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.channelFlow
@@ -30,6 +31,7 @@ import org.skepsun.kototoro.core.util.ext.URI_SCHEME_PDF
 import org.skepsun.kototoro.core.util.ext.extractPdfPath
 import org.skepsun.kototoro.core.util.ext.isPdfUriString
 import org.skepsun.kototoro.core.util.ext.deleteAwait
+import org.skepsun.kototoro.core.util.ext.creationTime
 import org.skepsun.kototoro.core.util.ext.printStackTraceDebug
 import org.skepsun.kototoro.core.util.ext.takeIfWriteable
 import org.skepsun.kototoro.core.util.ext.withChildren
@@ -65,6 +67,9 @@ private const val FILENAME_SKIP = ".notamanga"
 private const val BACKUP_SUFFIX = ".bk"
 private const val SCAN_SIGNATURE_PREFS = "_local_scan_signature"
 private const val KEY_SCAN_SIGNATURE = "signature"
+
+/** 本地列表每页构建的内容数量（与 UI 分页页大小一致）。 */
+private const val LOCAL_PAGE_SIZE = 30
 
 @Singleton
 class LocalMangaRepository @Inject constructor(
@@ -115,46 +120,115 @@ class LocalMangaRepository @Inject constructor(
 		availableContentTypes = EnumSet.of(ContentType.MANGA, ContentType.NOVEL, ContentType.VIDEO),
 	)
 
+	// 有序过滤后的 mangaId 缓存（方案 B：打开只构建第一页，翻页才构建下一页）
+	private var orderedIdsCache: List<Long>? = null
+	private var orderedCacheKey: String? = null
+
+	private data class LightEntry(
+		val mangaId: Long,
+		val title: String,
+		val rating: Float,
+		val createdAt: Long,
+	)
+
 	override suspend fun getList(offset: Int, order: SortOrder?, filter: ContentListFilter?): List<Content> {
-		if (offset > 0) {
-			return emptyList()
+		val key = buildOrderCacheKey(order, filter)
+		if (orderedIdsCache == null || orderedCacheKey != key) {
+			orderedIdsCache = buildOrderedIds(order, filter)
+			orderedCacheKey = key
 		}
-		val list = getRawList()
-		if (settings.isNsfwContentDisabled) {
-			list.removeAll { it.manga.isNsfw() }
+		val ids = orderedIdsCache ?: return emptyList()
+		if (offset >= ids.size) return emptyList()
+		val end = (offset + LOCAL_PAGE_SIZE).coerceAtMost(ids.size)
+		val pageIds = ids.subList(offset, end)
+		// 只对当前页批量读完整内容 + 文件存在性检查
+		val cachedById = mangaDataRepository.findContentByIds(pageIds)
+		return pageIds.mapNotNull { id ->
+			val content = cachedById[id] ?: return@mapNotNull null
+			if (org.skepsun.kototoro.local.domain.model.LocalContent(content).file.exists()) content else null
 		}
-		if (filter != null) {
-			val query = filter.query
-			if (!query.isNullOrEmpty()) {
-				list.retainAll { x -> x.isMatchesQuery(query) }
+	}
+
+	/**
+	 * 轻量全量扫描：并行 stat 文件（过滤已删除 + 收集创建时间）、批量读轻量列与标签，
+	 * 完成过滤与排序后只返回有序 mangaId 列表（不构建完整 Content）。
+	 */
+	private suspend fun buildOrderedIds(order: SortOrder?, filter: ContentListFilter?): List<Long> {
+		val indexed = localContentIndex.getAllIndexed()
+		if (indexed.isEmpty()) return emptyList()
+		val creations = statCreationTimes(indexed.map { it.path })
+		val alive = indexed.filter { it.path in creations }
+		if (alive.isEmpty()) return emptyList()
+		val ids = alive.map { it.mangaId }
+		val lightById = mangaDataRepository.findLightByIds(ids).associateBy { it.mangaId }
+		val tagsById = mangaDataRepository.findTagTitlesByMangaIds(ids)
+		val skipNsfw = settings.isNsfwContentDisabled
+		val query = filter?.query
+		val tags = filter?.tags.orEmpty().mapToSet { it.title }
+		val types = filter?.types.orEmpty()
+		val tagsExclude = filter?.tagsExclude.orEmpty().mapToSet { it.title }
+		val ratingFilter = filter?.contentRating?.singleOrNull()
+		val entries = alive.mapNotNull { entry ->
+			val light = lightById[entry.mangaId] ?: return@mapNotNull null
+			if (skipNsfw && light.isNsfw) return@mapNotNull null
+			if (!query.isNullOrEmpty() && !light.matchesQuery(query)) return@mapNotNull null
+			if (tags.isNotEmpty() && !tagsById[entry.mangaId].orEmpty().containsAll(tags)) return@mapNotNull null
+			if (types.isNotEmpty() && (light.contentType?.let { runCatching { ContentType.valueOf(it) }.getOrNull() } ?: ContentType.MANGA) !in types) {
+				return@mapNotNull null
 			}
-			if (filter.tags.isNotEmpty()) {
-				list.retainAll { x -> x.containsTags(filter.tags.mapToSet { it.title }) }
+			if (tagsExclude.isNotEmpty() && tagsById[entry.mangaId].orEmpty().any { it in tagsExclude }) {
+				return@mapNotNull null
 			}
-			if (filter.types.isNotEmpty()) {
-				list.retainAll { x -> (x.manga.source?.contentType ?: ContentType.MANGA) in filter.types }
+			ratingFilter?.let {
+				val isNsfwFilter = it == ContentRating.ADULT
+				if (light.isNsfw != isNsfwFilter) return@mapNotNull null
 			}
-			if (filter.tagsExclude.isNotEmpty()) {
-				list.removeAll { x -> x.containsAnyTag(filter.tagsExclude.mapToSet { it.title }) }
-			}
-			filter.contentRating.singleOrNull()?.let { contentRating ->
-				val isNsfw = contentRating == ContentRating.ADULT
-				list.retainAll { it.manga.isNsfw() == isNsfw }
-			}
-			if (!query.isNullOrEmpty() && order == SortOrder.RELEVANCE) {
-				list.sortBy { it.manga.title.levenshteinDistance(query) }
-			}
+			LightEntry(entry.mangaId, light.title, light.rating, creations[entry.path] ?: 0L)
 		}
 		when (order) {
-			SortOrder.ALPHABETICAL -> list.sortWith(compareBy(AlphanumComparator()) { x -> x.manga.title })
-			SortOrder.RATING -> list.sortByDescending { it.manga.rating }
+			SortOrder.ALPHABETICAL -> entries.sortWith(compareBy(AlphanumComparator()) { it.title })
+			SortOrder.RATING -> entries.sortByDescending { it.rating }
 			SortOrder.NEWEST,
-			SortOrder.UPDATED -> list.sortWith(compareBy({ -it.createdAt }, { it.manga.id }))
-
+			SortOrder.UPDATED -> entries.sortWith(compareBy({ -it.createdAt }, { it.mangaId }))
 			else -> Unit
 		}
-		return list.unwrap()
+		if (!query.isNullOrEmpty() && order == SortOrder.RELEVANCE) {
+			entries.sortBy { it.title.levenshteinDistance(query) }
+		}
+		return entries.map { it.mangaId }
 	}
+
+	private fun buildOrderCacheKey(order: SortOrder?, filter: ContentListFilter?): String {
+		return "$order|${filter?.query}|${filter?.tags.orEmpty().joinToString(",") { it.title }}" +
+			"|${filter?.types}|${filter?.tagsExclude.orEmpty().joinToString(",") { it.title }}|${filter?.contentRating}|${settings.isNsfwContentDisabled}"
+	}
+
+	/** 并行 stat：返回 path → 创建时间（顺带过滤已删除文件）。 */
+	private suspend fun statCreationTimes(paths: List<String>): Map<String, Long> {
+		if (paths.isEmpty()) return emptyMap()
+		val result = ConcurrentHashMap<String, Long>()
+		val dispatcher = Dispatchers.IO.limitedParallelism(8)
+		coroutineScope {
+			for (path in paths) {
+				launch(dispatcher) {
+					runCatching {
+						val file = java.io.File(path)
+						if (file.exists()) result[path] = file.creationTime
+					}
+				}
+			}
+		}
+		return result
+	}
+
+	private fun org.skepsun.kototoro.core.db.dao.MangaDao.MangaLightRow.matchesQuery(query: String): Boolean {
+		return title.contains(query, ignoreCase = true) ||
+			altTitles?.contains(query, ignoreCase = true) == true ||
+			authors?.contains(query, ignoreCase = true) == true
+	}
+
+	/** 全量本地内容（批量删除等场景使用，不受列表分页影响）。 */
+	suspend fun getAllLocalContent(): List<Content> = getRawListAsFlow().toCollection(ArrayList()).unwrap()
 
 	override suspend fun getDetails(manga: Content): Content = when {
 		!manga.isLocal -> {
@@ -441,13 +515,20 @@ class LocalMangaRepository @Inject constructor(
 	 * [refreshIndexNow] 在文件变更事件或手动刷新时处理。
 	 */
 	fun getRawListAsFlow(): Flow<LocalContent> = channelFlow {
+		val t0 = System.currentTimeMillis()
 		val indexed = localContentIndex.getAllIndexed()
+		android.util.Log.d("LocalListTiming", "getAllIndexed: ${System.currentTimeMillis() - t0}ms count=${indexed.size}")
 		// 一次批量读取全部 manga 行，替代逐本查询（N 次 SQL → 1 次）
+		val t1 = System.currentTimeMillis()
 		val cachedById = mangaDataRepository.findContentByIds(indexed.map { it.mangaId })
+		android.util.Log.d("LocalListTiming", "findContentByIds: ${System.currentTimeMillis() - t1}ms")
+		var existsMs = 0L
 		for (entry in indexed) {
 			val file = File(entry.path)
 			// 已删除的文件交给刷新清理，这里不阻塞、不解析
+			val te = System.currentTimeMillis()
 			if (!file.exists()) continue
+			existsMs += System.currentTimeMillis() - te
 			val cached = contentCache[entry.path]
 			val local = when {
 				cached != null -> cached.second
@@ -458,6 +539,7 @@ class LocalMangaRepository @Inject constructor(
 				send(local)
 			}
 		}
+		android.util.Log.d("LocalListTiming", "getRawListAsFlow done: ${System.currentTimeMillis() - t0}ms (exists=${existsMs}ms)")
 	}
 
 	/**
@@ -505,6 +587,9 @@ class LocalMangaRepository @Inject constructor(
 		refreshMutex.withLock {
 			if (!isStorageSignatureChanged()) return
 			refreshIndex()
+			// 索引变化后失效有序缓存，确保下次 getList 重建（新文件立即可见）
+			orderedIdsCache = null
+			orderedCacheKey = null
 		}
 	}
 

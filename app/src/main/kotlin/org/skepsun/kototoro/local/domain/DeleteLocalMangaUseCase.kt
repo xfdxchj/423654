@@ -27,7 +27,7 @@ class DeleteLocalContentUseCase @Inject constructor(
 	}
 
 	suspend operator fun invoke(ids: Set<Long>) {
-		val list = localContentRepository.getList(0, null, null)
+		val list = localContentRepository.getAllLocalContent()
 		var removed = 0
 		for (manga in list) {
 			if (manga.id in ids) {

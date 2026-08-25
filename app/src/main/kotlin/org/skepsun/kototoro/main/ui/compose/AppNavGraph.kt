@@ -1503,6 +1503,7 @@ internal fun LocalTopLevelRouteContent(
             onRandomClick = generateLocalRandomPage,
             onCloseRandomPage = { localRandomPage = null },
             bottomBarPadding = bottomBarPadding,
+            onLoadMore = { viewModel.loadMore() },
             pullRefreshEnabled = false,
             onTopBarOverrideChanged = {
                 onExploreSourceSelectionTopBarChanged(

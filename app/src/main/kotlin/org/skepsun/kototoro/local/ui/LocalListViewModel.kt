@@ -77,9 +77,6 @@ class LocalListViewModel @Inject constructor(
 
 	val onContentRemoved = MutableEventFlow<Unit>()
 
-	/** 本地列表一次性全量加载，没有"加载更多"分页。 */
-	override val hasMoreItems: StateFlow<Boolean> = kotlinx.coroutines.flow.MutableStateFlow(false)
-
 	override val currentGroupTab: StateFlow<BrowseGroupTab> = globalFavoritesState.selectedGroupTab
 
 	init {
@@ -97,6 +94,13 @@ class LocalListViewModel @Inject constructor(
 		viewModelScope.launch(Dispatchers.Default) {
 			localContentRepository.refreshIndexNow()
 			loadList(filterCoordinator.snapshot(), append = false)
+		}
+	}
+
+	/** 分页加载下一页（数据层按页构建，翻页时才构建下一页内容）。 */
+	fun loadMore() {
+		viewModelScope.launch(Dispatchers.Default) {
+			loadList(filterCoordinator.snapshot(), append = true)
 		}
 	}
 

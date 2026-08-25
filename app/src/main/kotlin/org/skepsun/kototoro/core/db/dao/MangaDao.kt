@@ -1,5 +1,6 @@
 package org.skepsun.kototoro.core.db.dao
 
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
@@ -19,6 +20,18 @@ abstract class MangaDao {
 	data class MissingContentTypeProjection(
 		val id: Long,
 		val source: String,
+	)
+
+	/** 轻量行：列表排序/过滤所需的列（避免构建完整对象）。 */
+	data class MangaLightRow(
+		@ColumnInfo(name = "manga_id") val mangaId: Long,
+		@ColumnInfo(name = "title") val title: String,
+		@ColumnInfo(name = "alt_title") val altTitles: String?,
+		@ColumnInfo(name = "author") val authors: String?,
+		@ColumnInfo(name = "rating") val rating: Float,
+		@ColumnInfo(name = "nsfw") val isNsfw: Boolean,
+		@ColumnInfo(name = "content_type") val contentType: String?,
+		@ColumnInfo(name = "source") val source: String,
 	)
 
 	@Transaction
@@ -60,6 +73,13 @@ abstract class MangaDao {
 
 	suspend fun findWithTagsByIds(ids: Collection<Long>): List<MangaWithTags> {
 		return ids.flatMapSqliteQueryChunks(::findWithTagsByIdsImpl)
+	}
+
+	@Query("SELECT manga_id, title, alt_title, author, rating, nsfw, content_type, source FROM manga WHERE manga_id IN (:ids)")
+	protected abstract suspend fun findLightByIdsImpl(ids: Collection<Long>): List<MangaLightRow>
+
+	suspend fun findLightByIds(ids: Collection<Long>): List<MangaLightRow> {
+		return ids.flatMapSqliteQueryChunks(::findLightByIdsImpl)
 	}
 
 	@Query(
