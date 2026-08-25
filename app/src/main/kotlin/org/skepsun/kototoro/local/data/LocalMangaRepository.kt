@@ -184,7 +184,7 @@ class LocalMangaRepository @Inject constructor(
 				if (light.isNsfw != isNsfwFilter) return@mapNotNull null
 			}
 			LightEntry(entry.mangaId, light.title, light.rating, creations[entry.path] ?: 0L)
-		}
+		}.toMutableList()
 		when (order) {
 			SortOrder.ALPHABETICAL -> entries.sortWith(compareBy(AlphanumComparator()) { it.title })
 			SortOrder.RATING -> entries.sortByDescending { it.rating }
