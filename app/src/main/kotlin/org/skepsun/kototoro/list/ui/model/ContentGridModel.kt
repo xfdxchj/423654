@@ -20,6 +20,8 @@ data class ContentGridModel(
 	override val isPinned: Boolean = false,
 	override val metadataTrackingService: ScrobblerService? = null,
 	override val scoreText: String? = null,
+	/** 本地内容的页数（如 PDF 总页数），由本地列表后台统计填充。 */
+	val pages: Int? = null,
 ) : ContentListModel() {
 
 	override fun getChangePayload(previousState: ListModel): Any? = when {
@@ -31,7 +33,8 @@ data class ContentGridModel(
 			previousState.isSaved != isSaved ||
 			previousState.projectionCount != projectionCount ||
 			previousState.metadataTrackingService != metadataTrackingService ||
-			previousState.scoreText != scoreText -> PAYLOAD_ANYTHING_CHANGED
+			previousState.scoreText != scoreText ||
+			previousState.pages != pages -> PAYLOAD_ANYTHING_CHANGED
 
 		else -> super.getChangePayload(previousState)
 	}

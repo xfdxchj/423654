@@ -455,6 +455,19 @@ fun KototoroContentCardGrid(
             )
         }
 
+        if (!compactOverlay && item.pages != null && item.pages!! > 0) {
+            Text(
+                text = stringResource(R.string.content_pages_label, item.pages),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 2.dp)
+            )
+        }
+
         if (!item.subtitle.isNullOrBlank()) {
             Text(
                 text = item.subtitle,

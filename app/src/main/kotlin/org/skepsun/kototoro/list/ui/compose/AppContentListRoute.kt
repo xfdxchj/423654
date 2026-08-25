@@ -113,6 +113,9 @@ fun <VM : ContentListViewModel> AppContentListRoute(
     onRandomClick: (() -> Unit)? = null,
     onCloseRandomPage: (() -> Unit)? = null,
     bottomBarPadding: androidx.compose.ui.unit.Dp = 0.dp,
+    sortMode: Int = 0,
+    onSortModeChange: ((Int) -> Unit)? = null,
+    onFilterTags: (() -> Unit)? = null,
 ) {
     val items by viewModel.content.collectAsStateWithLifecycle()
     val listMode by viewModel.listMode.collectAsStateWithLifecycle()
@@ -578,5 +581,8 @@ fun <VM : ContentListViewModel> AppContentListRoute(
         onRandomClick = effectiveOnRandomClick,
         onCloseRandomPage = effectiveOnCloseRandomPage,
         bottomBarPadding = bottomBarPadding,
+        sortMode = sortMode,
+        onSortModeChange = onSortModeChange,
+        onFilterTags = onFilterTags,
     )
 }

@@ -71,6 +71,13 @@ private const val KEY_SCAN_SIGNATURE = "signature"
 /** 本地列表每页构建的内容数量（与 UI 分页页大小一致）。 */
 private const val LOCAL_PAGE_SIZE = 30
 
+/** 本地列表排序模式（分页栏排序菜单）。 */
+enum class LocalPagesSortMode {
+	DEFAULT,
+	PAGES_ASC,
+	PAGES_DESC,
+}
+
 @Singleton
 class LocalMangaRepository @Inject constructor(
 	private val storageManager: LocalStorageManager,
@@ -123,6 +130,16 @@ class LocalMangaRepository @Inject constructor(
 	// 有序过滤后的 mangaId 缓存（方案 B：打开只构建第一页，翻页才构建下一页）
 	private var orderedIdsCache: List<Long>? = null
 	private var orderedCacheKey: String? = null
+
+	/** 页数缓存：mangaId → 总页数（PDF 等，后台统计）。 */
+	private val pagesCache = ConcurrentHashMap<Long, Int>()
+
+	/** 分页栏排序模式（默认 / 按页数升序 / 按页数降序）。 */
+	@Volatile
+	var pagesSortMode: LocalPagesSortMode = LocalPagesSortMode.DEFAULT
+
+	/** 已统计的页数（供列表模型附加显示）。 */
+	suspend fun getPagesById(): Map<Long, Int> = pagesCache.toMap()
 
 	private data class LightEntry(
 		val mangaId: Long,
@@ -185,21 +202,56 @@ class LocalMangaRepository @Inject constructor(
 			}
 			LightEntry(entry.mangaId, light.title, light.rating, creations[entry.path] ?: 0L)
 		}.toMutableList()
-		when (order) {
-			SortOrder.ALPHABETICAL -> entries.sortWith(compareBy(AlphanumComparator()) { it.title })
-			SortOrder.RATING -> entries.sortByDescending { it.rating }
-			SortOrder.NEWEST,
-			SortOrder.UPDATED -> entries.sortWith(compareBy({ -it.createdAt }, { it.mangaId }))
-			else -> Unit
+		when {
+			pagesSortMode == LocalPagesSortMode.PAGES_ASC ->
+				entries.sortBy { pagesCache[it.mangaId] ?: Int.MAX_VALUE }
+			pagesSortMode == LocalPagesSortMode.PAGES_DESC ->
+				entries.sortByDescending { pagesCache[it.mangaId] ?: -1 }
+			else -> when (order) {
+				SortOrder.ALPHABETICAL -> entries.sortWith(compareBy(AlphanumComparator()) { it.title })
+				SortOrder.RATING -> entries.sortByDescending { it.rating }
+				SortOrder.NEWEST,
+				SortOrder.UPDATED -> entries.sortWith(compareBy({ -it.createdAt }, { it.mangaId }))
+				else -> Unit
+			}
 		}
-		if (!query.isNullOrEmpty() && order == SortOrder.RELEVANCE) {
+		if (!query.isNullOrEmpty() && order == SortOrder.RELEVANCE && pagesSortMode == LocalPagesSortMode.DEFAULT) {
 			entries.sortBy { it.title.levenshteinDistance(query) }
 		}
 		return entries.map { it.mangaId }
 	}
 
+	/** 后台统计页数：PDF 用 PdfRenderer 数页，其余暂不统计（缓存后不再重复）。 */
+	private suspend fun statPages(indexed: List<LocalContentIndexEntity>) {
+		val dispatcher = Dispatchers.IO.limitedParallelism(4)
+		val changed = java.util.concurrent.atomic.AtomicBoolean(false)
+		coroutineScope {
+			for (entry in indexed) {
+				if (pagesCache.containsKey(entry.mangaId)) continue
+				launch(dispatcher) {
+					val pages = runCatching {
+						val file = java.io.File(entry.path)
+						when {
+							!file.isFile -> null
+							file.name.endsWith(".pdf", true) ->
+								org.skepsun.kototoro.local.pdf.LocalPdfParser(file).pageCount()
+							else -> null
+						}
+					}.getOrNull()
+					if (pages != null && pages > 0) {
+						pagesCache[entry.mangaId] = pages
+						changed.set(true)
+					}
+				}
+			}
+		}
+		if (changed.get()) {
+			localStorageChanges.emit(null)
+		}
+	}
+
 	private fun buildOrderCacheKey(order: SortOrder?, filter: ContentListFilter?): String {
-		return "$order|${filter?.query}|${filter?.tags.orEmpty().joinToString(",") { it.title }}" +
+		return "$order|$pagesSortMode|${filter?.query}|${filter?.tags.orEmpty().joinToString(",") { it.title }}" +
 			"|${filter?.types}|${filter?.tagsExclude.orEmpty().joinToString(",") { it.title }}|${filter?.contentRating}|${settings.isNsfwContentDisabled}"
 	}
 
@@ -540,6 +592,10 @@ class LocalMangaRepository @Inject constructor(
 			}
 		}
 		android.util.Log.d("LocalListTiming", "getRawListAsFlow done: ${System.currentTimeMillis() - t0}ms (exists=${existsMs}ms)")
+		// 后台统计页数（不阻塞列表显示）
+		backgroundScope.launch {
+			statPages(indexed)
+		}
 	}
 
 	/**

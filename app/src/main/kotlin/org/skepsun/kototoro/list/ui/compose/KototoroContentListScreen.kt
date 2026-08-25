@@ -22,6 +22,8 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -36,6 +38,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -194,6 +197,9 @@ fun KototoroContentListScreen(
     onRandomClick: (() -> Unit)? = null,
     onCloseRandomPage: (() -> Unit)? = null,
     bottomBarPadding: androidx.compose.ui.unit.Dp = 0.dp,
+    sortMode: Int = 0,
+    onSortModeChange: ((Int) -> Unit)? = null,
+    onFilterTags: (() -> Unit)? = null,
 ) {
     val canLoadMore = remember(items, hasMoreItems) {
         hasMoreItems && items.any { it is ContentListModel }
@@ -426,6 +432,9 @@ fun KototoroContentListScreen(
                                         canGoNext = canGoNext,
                                         showRandom = onRandomClick != null,
                                         isRandomMode = isRandomMode,
+                                        sortMode = sortMode,
+                                        onSortModeChange = onSortModeChange,
+                                        onFilterTags = onFilterTags,
                                         onPrev = { pageIndex = (pageIndex - 1).coerceAtLeast(0) },
                                         onNext = { pageIndex += 1 },
                                         onRandom = onRandomClick,
@@ -594,11 +603,15 @@ private fun PagerControlsBar(
     canGoNext: Boolean,
     showRandom: Boolean,
     isRandomMode: Boolean,
+    sortMode: Int = 0,
+    onSortModeChange: ((Int) -> Unit)? = null,
+    onFilterTags: (() -> Unit)? = null,
     onPrev: () -> Unit,
     onNext: () -> Unit,
     onRandom: (() -> Unit)?,
     onCloseRandom: (() -> Unit)?,
 ) {
+    var sortMenuExpanded by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -611,6 +624,48 @@ private fun PagerControlsBar(
                 Text(stringResource(R.string.content_page_back_to_list))
             }
         } else {
+            if (onSortModeChange != null) {
+                Box {
+                    TextButton(onClick = { sortMenuExpanded = true }) {
+                        Text(stringResource(R.string.content_sort))
+                    }
+                    DropdownMenu(
+                        expanded = sortMenuExpanded,
+                        onDismissRequest = { sortMenuExpanded = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.content_sort_default)) },
+                            onClick = {
+                                onSortModeChange(0)
+                                sortMenuExpanded = false
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.content_sort_pages_asc)) },
+                            onClick = {
+                                onSortModeChange(1)
+                                sortMenuExpanded = false
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.content_sort_pages_desc)) },
+                            onClick = {
+                                onSortModeChange(2)
+                                sortMenuExpanded = false
+                            },
+                        )
+                        if (onFilterTags != null) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.content_sort_filter_tags)) },
+                                onClick = {
+                                    onFilterTags()
+                                    sortMenuExpanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+            }
             TextButton(onClick = onPrev, enabled = canGoPrev) {
                 Text(stringResource(R.string.content_page_previous))
             }

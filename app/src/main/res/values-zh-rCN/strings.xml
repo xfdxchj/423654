@@ -3189,4 +3189,10 @@ SHA-256 指纹:
     <string name="content_page_back_to_list">返回列表</string>
     <string name="content_page_random_again">再随机</string>
     <string name="refresh">刷新</string>
+    <string name="content_sort">排序</string>
+    <string name="content_sort_default">默认</string>
+    <string name="content_sort_pages_asc">按页数升序</string>
+    <string name="content_sort_pages_desc">按页数降序</string>
+    <string name="content_sort_filter_tags">筛选标签</string>
+    <string name="content_pages_label">共 %1$d 页</string>
 </resources>

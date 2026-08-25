@@ -79,6 +79,20 @@ class LocalListViewModel @Inject constructor(
 
 	override val currentGroupTab: StateFlow<BrowseGroupTab> = globalFavoritesState.selectedGroupTab
 
+	/** 分页栏排序模式（默认 / 按页数升序 / 按页数降序）。 */
+	private val pagesSortModeState = kotlinx.coroutines.flow.MutableStateFlow(
+		org.skepsun.kototoro.local.data.LocalPagesSortMode.DEFAULT,
+	)
+	val pagesSortMode: StateFlow<org.skepsun.kototoro.local.data.LocalPagesSortMode> = pagesSortModeState
+
+	fun setPagesSortMode(mode: org.skepsun.kototoro.local.data.LocalPagesSortMode) {
+		pagesSortModeState.value = mode
+		localContentRepository.pagesSortMode = mode
+		viewModelScope.launch(Dispatchers.Default) {
+			loadList(filterCoordinator.snapshot(), append = false)
+		}
+	}
+
 	init {
 		launchJob(Dispatchers.Default) {
 			localStorageChanges
@@ -108,6 +122,19 @@ class LocalListViewModel @Inject constructor(
 		super.onBuildList(list)
 		createFilterHeader()?.let {
 			list.add(0, it)
+		}
+		// 附加页数（PDF 等，后台统计）
+		val pagesById = localContentRepository.getPagesById()
+		if (pagesById.isNotEmpty()) {
+			for (i in list.indices) {
+				val item = list[i]
+				if (item is org.skepsun.kototoro.list.ui.model.ContentGridModel) {
+					val pages = pagesById[item.id]
+					if (pages != null) {
+						list[i] = item.copy(pages = pages)
+					}
+				}
+			}
 		}
 		if (!localStorageManager.hasExternalStoragePermission(isReadOnly = true)) {
 			for (item in list) {

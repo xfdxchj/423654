@@ -3315,4 +3315,10 @@
     <string name="content_page_back_to_list">Back to list</string>
     <string name="content_page_random_again">Random again</string>
     <string name="refresh">Refresh</string>
+    <string name="content_sort">Sort</string>
+    <string name="content_sort_default">Default</string>
+    <string name="content_sort_pages_asc">Pages asc</string>
+    <string name="content_sort_pages_desc">Pages desc</string>
+    <string name="content_sort_filter_tags">Filter tags</string>
+    <string name="content_pages_label">%1$d pages</string>
 </resources>

@@ -1432,6 +1432,21 @@ internal fun LocalTopLevelRouteContent(
     val bottomBarPadding = with(density) { bottomBarHeightPx.toDp() }
     var pendingRemoveSelection by remember { mutableStateOf<Set<Long>?>(null) }
     var localRandomPage by remember { mutableStateOf<List<org.skepsun.kototoro.list.ui.model.ContentGridModel>?>(null) }
+    val pagesSortMode by viewModel.pagesSortMode.collectAsStateWithLifecycle()
+    val sortModeValue = when (pagesSortMode) {
+        org.skepsun.kototoro.local.data.LocalPagesSortMode.PAGES_ASC -> 1
+        org.skepsun.kototoro.local.data.LocalPagesSortMode.PAGES_DESC -> 2
+        org.skepsun.kototoro.local.data.LocalPagesSortMode.DEFAULT -> 0
+    }
+    val onSortModeChange: (Int) -> Unit = { value ->
+        viewModel.setPagesSortMode(
+            when (value) {
+                1 -> org.skepsun.kototoro.local.data.LocalPagesSortMode.PAGES_ASC
+                2 -> org.skepsun.kototoro.local.data.LocalPagesSortMode.PAGES_DESC
+                else -> org.skepsun.kototoro.local.data.LocalPagesSortMode.DEFAULT
+            },
+        )
+    }
     val generateLocalRandomPage: () -> Unit = {
         localRandomPage = viewModel.content.value
             .filterIsInstance<org.skepsun.kototoro.list.ui.model.ContentGridModel>()
@@ -1504,6 +1519,9 @@ internal fun LocalTopLevelRouteContent(
             onCloseRandomPage = { localRandomPage = null },
             bottomBarPadding = bottomBarPadding,
             onLoadMore = { viewModel.loadMore() },
+            sortMode = sortModeValue,
+            onSortModeChange = onSortModeChange,
+            onFilterTags = { appRouter.showFilterSheet() },
             pullRefreshEnabled = false,
             onTopBarOverrideChanged = {
                 onExploreSourceSelectionTopBarChanged(
