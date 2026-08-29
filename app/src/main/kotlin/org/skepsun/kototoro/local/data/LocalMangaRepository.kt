@@ -222,7 +222,7 @@ class LocalMangaRepository @Inject constructor(
 		return entries.map { it.mangaId }
 	}
 
-	/** 后台统计页数：PDF 用 PdfRenderer 数页，其余暂不统计（缓存后不再重复）。 */
+	/** 后台统计页数：PDF 用 PdfRenderer 数页（支持单个 PDF 文件与目录内含 PDF 两种形态），缓存后不再重复。 */
 	private suspend fun statPages(indexed: List<LocalContentIndexEntity>) {
 		val dispatcher = Dispatchers.IO.limitedParallelism(4)
 		val changed = java.util.concurrent.atomic.AtomicBoolean(false)
@@ -232,12 +232,15 @@ class LocalMangaRepository @Inject constructor(
 				launch(dispatcher) {
 					val pages = runCatching {
 						val file = java.io.File(entry.path)
-						when {
-							!file.isFile -> null
-							file.name.endsWith(".pdf", true) ->
-								org.skepsun.kototoro.local.pdf.LocalPdfParser(file).pageCount()
+						val pdfFile = when {
+							file.isFile && file.name.endsWith(".pdf", true) -> file
+							// 目录型漫画（目录内包含 PDF）：委托 LocalPdfParser 解析
+							file.isDirectory -> file.listFiles { f ->
+								f.isFile && f.name.endsWith(".pdf", true)
+							}?.firstOrNull()
 							else -> null
 						}
+						pdfFile?.let { org.skepsun.kototoro.local.pdf.LocalPdfParser(it).pageCount() }
 					}.getOrNull()
 					if (pages != null && pages > 0) {
 						pagesCache[entry.mangaId] = pages

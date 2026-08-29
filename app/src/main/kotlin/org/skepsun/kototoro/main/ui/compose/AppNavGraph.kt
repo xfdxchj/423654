@@ -1431,7 +1431,7 @@ internal fun LocalTopLevelRouteContent(
     val density = androidx.compose.ui.platform.LocalDensity.current
     val bottomBarPadding = with(density) { bottomBarHeightPx.toDp() }
     var pendingRemoveSelection by remember { mutableStateOf<Set<Long>?>(null) }
-    var localRandomPage by remember { mutableStateOf<List<org.skepsun.kototoro.list.ui.model.ContentGridModel>?>(null) }
+    val localRandomPage by viewModel.randomPage.collectAsStateWithLifecycle()
     val pagesSortMode by viewModel.pagesSortMode.collectAsStateWithLifecycle()
     val sortModeValue = when (pagesSortMode) {
         org.skepsun.kototoro.local.data.LocalPagesSortMode.PAGES_ASC -> 1
@@ -1446,12 +1446,6 @@ internal fun LocalTopLevelRouteContent(
                 else -> org.skepsun.kototoro.local.data.LocalPagesSortMode.DEFAULT
             },
         )
-    }
-    val generateLocalRandomPage: () -> Unit = {
-        localRandomPage = viewModel.content.value
-            .filterIsInstance<org.skepsun.kototoro.list.ui.model.ContentGridModel>()
-            .shuffled()
-            .take(org.skepsun.kototoro.list.ui.compose.CONTENT_PAGE_SIZE)
     }
 
     DisposableEffect(appRouter) {
@@ -1483,17 +1477,7 @@ internal fun LocalTopLevelRouteContent(
                     )
                     add(
                         KototoroTopBarMenuAction(org.skepsun.kototoro.R.string.random) {
-                            val gridItems = viewModel.content.value
-                                .filterIsInstance<org.skepsun.kototoro.list.ui.model.ContentGridModel>()
-                            if (gridItems.isNotEmpty()) {
-                                localRandomPage = gridItems.shuffled().take(org.skepsun.kototoro.list.ui.compose.CONTENT_PAGE_SIZE)
-                            } else {
-                                android.widget.Toast.makeText(
-                                    activity,
-                                    org.skepsun.kototoro.R.string.local_list_empty,
-                                    android.widget.Toast.LENGTH_SHORT,
-                                ).show()
-                            }
+                            viewModel.openRandomPage()
                         },
                     )
                 },
@@ -1515,8 +1499,8 @@ internal fun LocalTopLevelRouteContent(
             contentPadding = contentPadding,
             appRouter = appRouter,
             randomPage = localRandomPage,
-            onRandomClick = generateLocalRandomPage,
-            onCloseRandomPage = { localRandomPage = null },
+            onRandomClick = { viewModel.openRandomPage() },
+            onCloseRandomPage = { viewModel.closeRandomPage() },
             bottomBarPadding = bottomBarPadding,
             onLoadMore = { viewModel.loadMore() },
             sortMode = sortModeValue,

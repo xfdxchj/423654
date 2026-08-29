@@ -153,7 +153,7 @@ internal fun ReaderActionsContent(
 						disabledThumbColor = Color.Transparent,
 					),
 				)
-				if (isSliderTracking && state.pageLabel.isNotEmpty()) {
+				if (state.pageLabel.isNotEmpty()) {
 					androidx.compose.material3.Text(
 						text = state.pageLabel,
 						color = normalContentColor,

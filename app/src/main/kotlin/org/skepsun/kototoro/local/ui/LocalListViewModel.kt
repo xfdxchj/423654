@@ -26,6 +26,7 @@ import org.skepsun.kototoro.filter.ui.FilterCoordinator
 import org.skepsun.kototoro.list.domain.ListFilterOption
 import org.skepsun.kototoro.list.domain.ContentListMapper
 import org.skepsun.kototoro.list.domain.QuickFilterListener
+import org.skepsun.kototoro.list.ui.compose.CONTENT_PAGE_SIZE
 import org.skepsun.kototoro.list.ui.model.EmptyState
 import org.skepsun.kototoro.list.ui.model.ListModel
 import org.skepsun.kototoro.list.ui.model.ContentListModel
@@ -78,6 +79,28 @@ class LocalListViewModel @Inject constructor(
 	val onContentRemoved = MutableEventFlow<Unit>()
 
 	override val currentGroupTab: StateFlow<BrowseGroupTab> = globalFavoritesState.selectedGroupTab
+
+	/** 随机页（从全部本地内容随机 30 个，而非仅已加载的页）。 */
+	private val randomPageState = kotlinx.coroutines.flow.MutableStateFlow<List<org.skepsun.kototoro.list.ui.model.ContentGridModel>?>(null)
+	val randomPage: StateFlow<List<org.skepsun.kototoro.list.ui.model.ContentGridModel>?> = randomPageState
+
+	fun openRandomPage() {
+		viewModelScope.launch(Dispatchers.Default) {
+			val all = localContentRepository.getAllLocalContent()
+			if (all.isEmpty()) {
+				randomPageState.value = null
+				return@launch
+			}
+			val random = all.shuffled().take(CONTENT_PAGE_SIZE)
+			val models = mangaListMapper.toListModelList(random, ListMode.GRID)
+				.filterIsInstance<org.skepsun.kototoro.list.ui.model.ContentGridModel>()
+			randomPageState.value = models
+		}
+	}
+
+	fun closeRandomPage() {
+		randomPageState.value = null
+	}
 
 	/** 分页栏排序模式（默认 / 按页数升序 / 按页数降序）。 */
 	private val pagesSortModeState = kotlinx.coroutines.flow.MutableStateFlow(

@@ -455,7 +455,7 @@ fun KototoroContentCardGrid(
             )
         }
 
-        if (!compactOverlay && item.pages != null && item.pages!! > 0) {
+        if (item.pages != null && item.pages!! > 0) {
             Text(
                 text = stringResource(R.string.content_pages_label, item.pages),
                 style = MaterialTheme.typography.bodySmall,
