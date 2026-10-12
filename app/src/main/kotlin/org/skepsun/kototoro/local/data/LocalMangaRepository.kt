@@ -224,7 +224,7 @@ class LocalMangaRepository @Inject constructor(
 
 	/** 后台统计页数：PDF 用 PdfRenderer 数页（支持单个 PDF 文件与目录内含 PDF 两种形态），缓存后不再重复。 */
 	private suspend fun statPages(indexed: List<LocalContentIndexEntity>) {
-		val dispatcher = Dispatchers.IO.limitedParallelism(4)
+		val dispatcher = Dispatchers.IO.limitedParallelism(6)
 		val changed = java.util.concurrent.atomic.AtomicBoolean(false)
 		coroutineScope {
 			for (entry in indexed) {
@@ -286,15 +286,38 @@ class LocalMangaRepository @Inject constructor(
 	/** 全量本地内容（批量删除等场景使用，不受列表分页影响）。 */
 	suspend fun getAllLocalContent(): List<Content> = getRawListAsFlow().toCollection(ArrayList()).unwrap()
 
-	override suspend fun getDetails(manga: Content): Content = when {
+	override suspend fun getDetails(manga: Content): Content {
+		val tStart = System.currentTimeMillis()
+		val result = getDetailsImpl(manga)
+		android.util.Log.d(
+			"LocalDetailsTiming",
+			"getDetails done: ${System.currentTimeMillis() - tStart}ms title=${manga.title} isLocal=${manga.isLocal}",
+		)
+		return result
+	}
+
+	private suspend fun getDetailsImpl(manga: Content): Content = when {
 		!manga.isLocal -> {
-			// For saved manga, always re-parse from disk to get fresh chapter data
-			// This ensures we get updated chapters after EPUB download/extraction
-			// Bypass localContentIndex cache by using LocalContentParser.find directly
-			val parser = LocalContentParser.find(storageManager.getAllReadableDirs(), manga)
+			// 保存/下载的漫画：先用索引直接定位路径（一次 SQL），避免全目录扫描 + 逐个候选解析。
+			// 定位后仍从磁盘重新解析，以获得最新章节数据（下载/解压后章节会变化）。
+			val tLocate = System.currentTimeMillis()
+			val indexedFile = localContentIndex.getPath(manga.id)
+				?.let { java.io.File(it) }
+				?.takeIf { it.exists() }
+			val parser = if (indexedFile != null) {
+				LocalContentParser(indexedFile)
+			} else {
+				LocalContentParser.find(storageManager.getAllReadableDirs(), manga)
+			}
+			android.util.Log.d(
+				"LocalDetailsTiming",
+				"locate: ${System.currentTimeMillis() - tLocate}ms indexedHit=${indexedFile != null}",
+			)
 			if (parser != null) {
-				// Parse directly from disk to get fresh data
-				parser.getContent(withDetails = true).manga
+				val tParse = System.currentTimeMillis()
+				val parsed = parser.getContent(withDetails = true).manga
+				android.util.Log.d("LocalDetailsTiming", "parse: ${System.currentTimeMillis() - tParse}ms")
+				parsed
 			} else {
 				throw IllegalArgumentException("Content is not local or saved")
 			}
@@ -578,24 +601,41 @@ class LocalMangaRepository @Inject constructor(
 		val t1 = System.currentTimeMillis()
 		val cachedById = mangaDataRepository.findContentByIds(indexed.map { it.mangaId })
 		android.util.Log.d("LocalListTiming", "findContentByIds: ${System.currentTimeMillis() - t1}ms")
-		var existsMs = 0L
+		// 并行检查文件存在性（替代逐条串行 stat，本地内容多时明显更快）
+		val tExists = System.currentTimeMillis()
+		val existingPaths = statExistingPaths(indexed.map { it.path })
+		android.util.Log.d("LocalListTiming", "statExists: ${System.currentTimeMillis() - tExists}ms alive=${existingPaths.size}")
 		for (entry in indexed) {
-			val file = File(entry.path)
 			// 已删除的文件交给刷新清理，这里不阻塞、不解析
-			val te = System.currentTimeMillis()
-			if (!file.exists()) continue
-			existsMs += System.currentTimeMillis() - te
+			if (entry.path !in existingPaths) continue
 			val cached = contentCache[entry.path]
 			val local = when {
 				cached != null -> cached.second
-				else -> cachedById[entry.mangaId]?.let { LocalContent(it, file) }
+				else -> cachedById[entry.mangaId]?.let { LocalContent(it, File(entry.path)) }
 			}
 			if (local != null) {
 				contentCache[entry.path] = entry.mtime to local
 				send(local)
 			}
 		}
-		android.util.Log.d("LocalListTiming", "getRawListAsFlow done: ${System.currentTimeMillis() - t0}ms (exists=${existsMs}ms)")
+		android.util.Log.d("LocalListTiming", "getRawListAsFlow done: ${System.currentTimeMillis() - t0}ms")
+	}
+
+	/** 并行检查路径是否存在（返回存在的路径集合）。 */
+	private suspend fun statExistingPaths(paths: List<String>): Set<String> {
+		if (paths.isEmpty()) return emptySet()
+		val result = java.util.Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
+		val dispatcher = Dispatchers.IO.limitedParallelism(8)
+		coroutineScope {
+			for (path in paths) {
+				launch(dispatcher) {
+					if (runCatching { File(path).exists() }.getOrDefault(false)) {
+						result.add(path)
+					}
+				}
+			}
+		}
+		return result
 	}
 
 	/** 手动刷新时统计页数（其他情况不统计，避免每次打开列表都扫描 PDF）。 */

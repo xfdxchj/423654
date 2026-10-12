@@ -126,12 +126,14 @@ class LocalListViewModel @Inject constructor(
 		settings.subscribe(this)
 	}
 
-	/** 手动刷新：刷新本地索引并统计页数（仅刷新时统计，其他情况不统计），再重新加载列表。 */
+	/** 手动刷新：刷新索引并显示列表，页数统计放在列表显示之后（不阻塞列表）。 */
 	override fun onRefresh() {
 		viewModelScope.launch(Dispatchers.Default) {
 			localContentRepository.refreshIndexNow()
+			// 先加载并显示列表（不等页数统计，避免刷新时长时间等待）
+			loadList(filterCoordinator.snapshot(), append = false).join()
+			// 列表显示后再统计页数；统计完成会触发一次刷新，列表带上页数
 			localContentRepository.statPagesNow()
-			loadList(filterCoordinator.snapshot(), append = false)
 		}
 	}
 

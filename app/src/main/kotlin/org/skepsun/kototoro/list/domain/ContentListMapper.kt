@@ -100,6 +100,7 @@ class ContentListMapper @Inject constructor(
 		@Flags flags: Int = DEFAULTS,
 		pinnedIds: Set<Long>? = null,
 	) {
+		val t0 = System.currentTimeMillis()
 		val options = getOptions(flags)
 		val mangaIds = manga.map { it.id }
 		val manualOverrides = dataRepository.getOverrides()
@@ -111,6 +112,7 @@ class ContentListMapper @Inject constructor(
 		val savedIds = if (options.isBadgeEnabled(SAVED)) localContentIndex.getAllMangaIds() else null
 		val favoriteIds = if (options.isBadgeEnabled(FAVORITE)) favouritesRepository.getFavoriteMangaIds(mangaIds) else null
 		val effectivePinnedIds = pinnedIds ?: favouritesRepository.getPinnedIds(mangaIds)
+		android.util.Log.d("LocalListTiming", "toListModelList prefetch: ${System.currentTimeMillis() - t0}ms ids=${mangaIds.size}")
 		manga.mapTo(destination) {
 			val metadataSelection = metadataSelections[it.id]
 			toListModelImpl(
@@ -131,6 +133,7 @@ class ContentListMapper @Inject constructor(
 				favoriteIds = favoriteIds,
 			)
 		}
+		android.util.Log.d("LocalListTiming", "toListModelList done: ${System.currentTimeMillis() - t0}ms count=${manga.size}")
 	}
 
 	suspend fun toRequestedListModelList(

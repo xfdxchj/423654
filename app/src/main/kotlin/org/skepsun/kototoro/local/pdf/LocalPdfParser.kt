@@ -63,7 +63,8 @@ class LocalPdfParser(
 	 * @param withDetails 是否填充章节列表
 	 */
 	suspend fun parseContent(withDetails: Boolean): Content {
-		val pageCount = pageCount()
+		// 注意：这里不要调用 pageCount()——它需要打开 PDF（大文件很慢），
+		// 而内容模型并不使用该值；页数由列表后台统计（statPages）单独获取。
 		val meta = readInfoTxt()
 		val title = meta?.title ?: pdfFile.nameWithoutExtension
 		val coverUrl = findCover()?.toUri()?.toString()

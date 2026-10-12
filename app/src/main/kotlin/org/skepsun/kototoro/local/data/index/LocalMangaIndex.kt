@@ -107,6 +107,11 @@ suspend fun update() = mutex.withLock {
 		}
 	}
 
+	/** 按 mangaId 直接取本地路径（一次查询），供详情页快速定位、避免磁盘全扫描。 */
+	suspend fun getPath(mangaId: Long): String? {
+		return db.getLocalContentIndexDao().findPath(mangaId)
+	}
+
 	/** 返回索引中全部 (mangaId, path, mtime)，供列表快通道使用。 */
 	suspend fun getAllIndexed(): List<LocalContentIndexEntity> {
 		return db.getLocalContentIndexDao().findAll()

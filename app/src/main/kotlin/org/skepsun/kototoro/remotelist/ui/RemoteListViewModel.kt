@@ -200,6 +200,7 @@ open class RemoteListViewModel @Inject constructor(
 		}
 		return launchLoadingJob(Dispatchers.Default) {
 			try {
+				val t0 = System.currentTimeMillis()
 				listError.value = null
 				val offsetOrPageIndex = when (repository.listPagingMode) {
 					ContentRepository.ListPagingMode.OFFSET -> if (append) mangaList.value.sizeOrZero() else 0
@@ -255,6 +256,10 @@ open class RemoteListViewModel @Inject constructor(
 						RemoteListPaginationLogTag,
 						"loadList applied source=${source.name} append=$append total=${mangaList.value.sizeOrZero()} " +
 							"hasNext=${hasNextPage.value} lastLoadedPage=$lastLoadedPageIndex",
+					)
+					android.util.Log.d(
+						"LocalListTiming",
+						"loadList done: ${System.currentTimeMillis() - t0}ms append=$append total=${mangaList.value.sizeOrZero()} hasNext=${hasNextPage.value}",
 					)
 				} catch (e: CancellationException) {
 					throw e
