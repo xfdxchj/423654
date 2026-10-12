@@ -72,6 +72,9 @@ private const val KEY_SCAN_SIGNATURE = "signature"
 /** 本地列表每页构建的内容数量（与 UI 分页页大小一致）。 */
 private const val LOCAL_PAGE_SIZE = 30
 
+/** 详情缓存有效期：详情加载链会在数秒内重复请求同一本。 */
+private const val DETAILS_CACHE_TTL_MS = 30_000L
+
 /** 本地列表排序模式（分页栏排序菜单）。 */
 enum class LocalPagesSortMode {
 	DEFAULT,
@@ -286,14 +289,41 @@ class LocalMangaRepository @Inject constructor(
 	/** 全量本地内容（批量删除等场景使用，不受列表分页影响）。 */
 	suspend fun getAllLocalContent(): List<Content> = getRawListAsFlow().toCollection(ArrayList()).unwrap()
 
+	// 详情短时缓存：详情加载链会在极短时间内多次解析同一本（本地首屏 + 远程回退 + async），
+	// 缓存可避免重复的磁盘解析；文件变更/索引刷新时会整体失效。
+	private val detailsCache = ConcurrentHashMap<Long, Pair<Long, Content>>()
+	private val detailsLocks = ConcurrentHashMap<Long, Mutex>()
+
 	override suspend fun getDetails(manga: Content): Content {
-		val tStart = System.currentTimeMillis()
-		val result = getDetailsImpl(manga)
-		android.util.Log.d(
-			"LocalDetailsTiming",
-			"getDetails done: ${System.currentTimeMillis() - tStart}ms title=${manga.title} isLocal=${manga.isLocal}",
-		)
-		return result
+		val now = System.currentTimeMillis()
+		detailsCache[manga.id]?.let { (timestamp, cached) ->
+			if (now - timestamp < DETAILS_CACHE_TTL_MS) {
+				android.util.Log.d("LocalDetailsTiming", "getDetails cacheHit title=${manga.title}")
+				return cached
+			}
+		}
+		// 并发去重：详情页同一时刻可能并发请求同一本，避免重复解析
+		val lock = detailsLocks.getOrPut(manga.id) { Mutex() }
+		return lock.withLock {
+			val cachedNow = detailsCache[manga.id]
+			if (cachedNow != null && System.currentTimeMillis() - cachedNow.first < DETAILS_CACHE_TTL_MS) {
+				return@withLock cachedNow.second
+			}
+			val tStart = System.currentTimeMillis()
+			val result = getDetailsImpl(manga)
+			detailsCache[manga.id] = System.currentTimeMillis() to result
+			android.util.Log.d(
+				"LocalDetailsTiming",
+				"getDetails done: ${System.currentTimeMillis() - tStart}ms title=${manga.title} isLocal=${manga.isLocal}",
+			)
+			result
+		}
+	}
+
+	/** 文件变更/索引刷新后失效详情缓存，确保下次解析拿到最新章节。 */
+	private fun invalidateDetailsCache() {
+		detailsCache.clear()
+		detailsLocks.clear()
 	}
 
 	private suspend fun getDetailsImpl(manga: Content): Content = when {
@@ -583,6 +613,8 @@ class LocalMangaRepository @Inject constructor(
 		// 冷启动打开列表不再自动重新扫描，改为手动刷新按钮触发。
 		backgroundScope.launch {
 			localStorageChanges.collect {
+				// 文件发生变化：详情缓存立即失效，避免读到旧章节
+				invalidateDetailsCache()
 				refreshIndexNow()
 			}
 		}
@@ -690,9 +722,10 @@ class LocalMangaRepository @Inject constructor(
 		refreshMutex.withLock {
 			if (!isStorageSignatureChanged()) return
 			refreshIndex()
-			// 索引变化后失效有序缓存，确保下次 getList 重建（新文件立即可见）
+			// 索引变化后失效有序缓存与详情缓存，确保下次读取重建（新文件立即可见）
 			orderedIdsCache = null
 			orderedCacheKey = null
+			invalidateDetailsCache()
 		}
 	}
 
